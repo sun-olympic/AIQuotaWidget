@@ -65,15 +65,17 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
             .store(in: &cancellables)
 
         // Observe settings changes and state changes to update window size
-        let selectedTabPub = settings.$selectedTab.map { _ in () }.eraseToAnyPublisher()
-        let isCollapsedPub = settings.$isCollapsed.map { _ in () }.eraseToAnyPublisher()
+        var publishers = [
+            settings.$selectedTab.map { _ in () }.eraseToAnyPublisher(),
+            settings.$isCollapsed.map { _ in () }.eraseToAnyPublisher()
+        ]
+        if let service = service {
+            publishers.append(service.$cursorState.map { _ in () }.eraseToAnyPublisher())
+            publishers.append(service.$codexState.map { _ in () }.eraseToAnyPublisher())
+            publishers.append(service.$antigravityState.map { _ in () }.eraseToAnyPublisher())
+        }
         
-        let cursorPub = service?.$cursorState.map { _ in () }.eraseToAnyPublisher() ?? Just(()).eraseToAnyPublisher()
-        let codexPub = service?.$codexState.map { _ in () }.eraseToAnyPublisher() ?? Just(()).eraseToAnyPublisher()
-        let antigravityPub = service?.$antigravityState.map { _ in () }.eraseToAnyPublisher() ?? Just(()).eraseToAnyPublisher()
-        
-        selectedTabPub
-            .merge(with: isCollapsedPub, cursorPub, codexPub, antigravityPub)
+        Publishers.MergeMany(publishers)
             .sink { [weak self] _ in
                 self?.recalculateWindowSize()
             }

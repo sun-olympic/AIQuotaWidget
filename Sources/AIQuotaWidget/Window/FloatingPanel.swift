@@ -39,7 +39,8 @@ final class FloatingPanel: NSPanel {
             let diffX = rect.size.width - frame.size.width
             rect.origin.x = frame.origin.x - diffX
         }
-        super.setFrame(rect, display: displayFlag)
+        let clampedRect = clampToScreen(rect)
+        super.setFrame(clampedRect, display: displayFlag)
     }
 
     override func setFrame(_ frameRect: NSRect, display displayFlag: Bool, animate animateFlag: Bool) {
@@ -52,6 +53,38 @@ final class FloatingPanel: NSPanel {
             let diffX = rect.size.width - frame.size.width
             rect.origin.x = frame.origin.x - diffX
         }
-        super.setFrame(rect, display: displayFlag, animate: animateFlag)
+        let clampedRect = clampToScreen(rect)
+        super.setFrame(clampedRect, display: displayFlag, animate: animateFlag)
+    }
+
+    private func clampToScreen(_ rect: NSRect) -> NSRect {
+        let mouseLocation = NSEvent.mouseLocation
+        let screens = NSScreen.screens
+        let activeScreen = screens.first(where: { $0.frame.contains(mouseLocation) })
+            ?? self.screen
+            ?? NSScreen.main
+        
+        guard let screen = activeScreen else {
+            return rect
+        }
+        let visibleFrame = screen.visibleFrame
+        var clampedRect = rect
+        
+        clampedRect.size.width = min(clampedRect.size.width, visibleFrame.size.width)
+        clampedRect.size.height = min(clampedRect.size.height, visibleFrame.size.height)
+        
+        if clampedRect.origin.x < visibleFrame.minX {
+            clampedRect.origin.x = visibleFrame.minX
+        } else if clampedRect.origin.x + clampedRect.size.width > visibleFrame.maxX {
+            clampedRect.origin.x = visibleFrame.maxX - clampedRect.size.width
+        }
+        
+        if clampedRect.origin.y < visibleFrame.minY {
+            clampedRect.origin.y = visibleFrame.minY
+        } else if clampedRect.origin.y + clampedRect.size.height > visibleFrame.maxY {
+            clampedRect.origin.y = visibleFrame.maxY - clampedRect.size.height
+        }
+        
+        return clampedRect
     }
 }

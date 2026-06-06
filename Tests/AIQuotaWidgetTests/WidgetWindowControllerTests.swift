@@ -20,6 +20,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         settings.selectedTab = .cursor
         
         let controller = WidgetWindowController(settings: settings, rootView: TestView(settings: settings))
+        controller.panel.setFrameOrigin(CGPoint(x: 200, y: 400))
         
         // Check initial height is defaultSize.height (220)
         XCTAssertEqual(controller.panel.frame.size.height, 220)
@@ -290,6 +291,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         let service = QuotaService(settings: settings)
         
         let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
+        controller.panel.setFrameOrigin(CGPoint(x: 200, y: 400))
         
         // Let's check initial size (no service loaded yet, so height is 220)
         XCTAssertEqual(controller.panel.frame.size.width, 320)
@@ -361,6 +363,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         let service = QuotaService(settings: settings)
         
         let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
+        controller.panel.setFrameOrigin(CGPoint(x: 200, y: 400))
         
         let initialTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
         let initialTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
@@ -397,5 +400,36 @@ final class WidgetWindowControllerTests: XCTestCase {
         service.stop()
         await AntigravityCache.shared.clear()
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
+    @MainActor
+    func testWindowClampsToScreenBoundaries() throws {
+        if let screen = NSScreen.main {
+            print("--- DEBUG visibleFrame: \(screen.visibleFrame)")
+        }
+        let settings = AppSettings()
+        let controller = WidgetWindowController(settings: settings, rootView: Text("Test"))
+        
+        guard let screen = NSScreen.main else {
+            return
+        }
+        let visibleFrame = screen.visibleFrame
+        
+        // Try to position window way off-screen to the right/top
+        let offScreenRect = NSRect(x: visibleFrame.maxX + 100, y: visibleFrame.maxY + 100, width: 320, height: 220)
+        controller.panel.setFrame(offScreenRect, display: true)
+        
+        // It should be clamped to the screen edge
+        XCTAssertEqual(controller.panel.frame.size.width, 320)
+        XCTAssertEqual(controller.panel.frame.size.height, 220)
+        XCTAssertEqual(controller.panel.frame.origin.x, visibleFrame.maxX - 320, accuracy: 0.001)
+        XCTAssertEqual(controller.panel.frame.origin.y, visibleFrame.maxY - 220, accuracy: 0.001)
+        
+        // Try to position window way off-screen to the left/bottom
+        let offScreenRect2 = NSRect(x: visibleFrame.minX - 100, y: visibleFrame.minY - 100, width: 320, height: 220)
+        controller.panel.setFrame(offScreenRect2, display: true)
+        
+        XCTAssertEqual(controller.panel.frame.origin.x, visibleFrame.minX, accuracy: 0.001)
+        XCTAssertEqual(controller.panel.frame.origin.y, visibleFrame.minY, accuracy: 0.001)
     }
 }
