@@ -127,5 +127,45 @@ final class AntigravityNormalizerTests: XCTestCase {
         // Clean cache
         await AntigravityCache.shared.clear()
     }
+
+    func testCoarseGroupingLogic() throws {
+        let models = [
+            AntigravityNormalizer.Model(id: "g1", displayName: "Gemini 2.5 Flash", remainingFraction: 1.0, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "g2", displayName: "Gemini 1.5 Pro", remainingFraction: 0.8, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "c1", displayName: "Claude 3.5 Sonnet", remainingFraction: 0.9, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "c2", displayName: "Claude 3 Haiku", remainingFraction: 0.6, resetAt: nil, isExhausted: false)
+        ]
+
+        // Case 1: defaultModelId is "g1" (Gemini 2.5 Flash).
+        // Since "g1" is default, the representative for "Gemini" group should be "g1" (100%).
+        // For "Claude" group, representative should be "c2" (lowest remaining: 60%).
+        let snapshot1 = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "g1", coarseGrouping: true))
+        XCTAssertEqual(snapshot1.activeAntigravityModelId, "g1")
+        XCTAssertEqual(snapshot1.remainingPercent, 100)
+        XCTAssertEqual(snapshot1.primaryText, "Gemini · 100%")
+        
+        let secondary1 = try XCTUnwrap(snapshot1.secondaryWindows)
+        XCTAssertEqual(secondary1.count, 1)
+        XCTAssertEqual(secondary1[0].name, "Claude")
+        XCTAssertEqual(secondary1[0].remainingPercent, 60)
+        
+        let switcher1 = try XCTUnwrap(snapshot1.antigravityModels)
+        XCTAssertEqual(switcher1.count, 2)
+        XCTAssertEqual(switcher1[0].name, "Claude")
+        XCTAssertEqual(switcher1[1].name, "Gemini")
+
+        // Case 2: defaultModelId is "c1" (Claude 3.5 Sonnet).
+        // For "Gemini" group, representative should be "g2" (lowest remaining: 80%).
+        // Since "c1" is default, representative for "Claude" group should be "c1" (90%).
+        let snapshot2 = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "c1", coarseGrouping: true))
+        XCTAssertEqual(snapshot2.activeAntigravityModelId, "c1")
+        XCTAssertEqual(snapshot2.remainingPercent, 90)
+        XCTAssertEqual(snapshot2.primaryText, "Claude · 90%")
+        
+        let secondary2 = try XCTUnwrap(snapshot2.secondaryWindows)
+        XCTAssertEqual(secondary2.count, 1)
+        XCTAssertEqual(secondary2[0].name, "Gemini")
+        XCTAssertEqual(secondary2[0].remainingPercent, 80)
+    }
 }
 

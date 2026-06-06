@@ -31,15 +31,17 @@ actor AntigravityCache {
 struct AntigravityProvider: QuotaProvider {
     let productName = "Antigravity"
     let defaultModelOverride: String?
+    let coarseModelGrouping: Bool
 
-    init(defaultModelOverride: String? = nil) {
+    init(defaultModelOverride: String? = nil, coarseModelGrouping: Bool = false) {
         self.defaultModelOverride = defaultModelOverride
+        self.coarseModelGrouping = coarseModelGrouping
     }
 
     func fetch() async throws -> QuotaSnapshot {
         if let cached = await AntigravityCache.shared.get() {
             let activeDefaultId = defaultModelOverride ?? cached.defaultModelId
-            if let snapshot = AntigravityNormalizer.make(models: cached.models, defaultModelId: activeDefaultId) {
+            if let snapshot = AntigravityNormalizer.make(models: cached.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping) {
                 return snapshot
             }
         }
@@ -48,7 +50,7 @@ struct AntigravityProvider: QuotaProvider {
         if let raw = try? await fetchViaLocalServer() {
             await AntigravityCache.shared.set(raw)
             let activeDefaultId = defaultModelOverride ?? raw.defaultModelId
-            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId) {
+            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping) {
                 return snapshot
             }
         }
@@ -57,7 +59,7 @@ struct AntigravityProvider: QuotaProvider {
         if let raw = try await fetchViaCloud() {
             await AntigravityCache.shared.set(raw)
             let activeDefaultId = defaultModelOverride ?? raw.defaultModelId
-            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId) {
+            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping) {
                 return snapshot
             }
         }

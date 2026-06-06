@@ -170,4 +170,86 @@ final class WidgetWindowControllerTests: XCTestCase {
         await AntigravityCache.shared.clear()
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }
+
+    func testCoarseModelGroupingPersistence() throws {
+        let suiteName = "test.AIQuotaWidget.AppSettings.CoarseGrouping"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        var settings = AppSettings(defaults: defaults)
+        XCTAssertTrue(settings.coarseModelGrouping) // Default should be true
+        
+        settings.coarseModelGrouping = false
+        
+        // Re-init settings to see if it retrieves from defaults
+        settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.coarseModelGrouping)
+        
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
+    @MainActor
+    func testQuotaServiceReactsToCoarseModelGroupingChange() async throws {
+        let suiteName = "test.AIQuotaWidget.QuotaService.CoarseGrouping"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        let settings = AppSettings(defaults: defaults)
+        settings.selectedTab = .antigravity
+        
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", displayName: "Gemini 3.5 Flash", remainingFraction: 0.7, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m2", displayName: "Claude Sonnet", remainingFraction: 0.4, resetAt: nil, isExhausted: false)
+        ]
+        let rawData = AntigravityRawData(models: models, defaultModelId: "m1")
+        await AntigravityCache.shared.set(rawData)
+        
+        let service = QuotaService(settings: settings)
+        service.start()
+        
+        // Wait for first load (coarseModelGrouping default: true)
+        let expectation = self.expectation(description: "First load - coarse")
+        var cancellables = Set<AnyCancellable>()
+        service.$antigravityState
+            .sink { state in
+                if case .loaded(let snapshot) = state {
+                    if let list = snapshot.antigravityModels, list.count == 2,
+                       list[0].name == "Claude", list[1].name == "Gemini" {
+                        expectation.fulfill()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+            
+        await fulfillment(of: [expectation], timeout: 1.0)
+        cancellables.removeAll()
+        
+        // Now change settings.coarseModelGrouping to false
+        let expectation2 = self.expectation(description: "Second load - fine-grained")
+        service.$antigravityState
+            .sink { state in
+                if case .loaded(let snapshot) = state {
+                    if let list = snapshot.antigravityModels, list.count == 2,
+                       list[0].name == "Claude Sonnet", list[1].name == "Gemini 3.5 Flash" {
+                        expectation2.fulfill()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+            
+        settings.coarseModelGrouping = false
+        
+        await fulfillment(of: [expectation2], timeout: 1.0)
+        
+        // Clean up
+        service.stop()
+        await AntigravityCache.shared.clear()
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
 }

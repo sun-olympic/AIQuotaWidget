@@ -14,6 +14,7 @@ final class AppSettings: ObservableObject {
         static let selectedTab = "settings.selectedTab"
         static let enabledTabs = "settings.enabledTabs"
         static let antigravityDefaultModelId = "settings.antigravityDefaultModelId"
+        static let coarseModelGrouping = "settings.coarseModelGrouping"
     }
 
     private let defaults: UserDefaults
@@ -58,6 +59,10 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var coarseModelGrouping: Bool {
+        didSet { defaults.set(coarseModelGrouping, forKey: Key.coarseModelGrouping) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -74,6 +79,7 @@ final class AppSettings: ObservableObject {
 
         self.waveEnabled = defaults.object(forKey: Key.waveEnabled) as? Bool ?? true
         self.pinnedOnTop = defaults.object(forKey: Key.pinnedOnTop) as? Bool ?? true
+        self.coarseModelGrouping = defaults.object(forKey: Key.coarseModelGrouping) as? Bool ?? true
 
         let enabled: [ProductTab]
         if let rawArray = defaults.stringArray(forKey: Key.enabledTabs) {

@@ -16,12 +16,39 @@ enum AntigravityNormalizer {
         var name: String { displayName ?? AntigravityNormalizer.displayName(id) }
     }
 
-    static func make(models: [Model], defaultModelId: String?) -> QuotaSnapshot? {
+    static func make(models: [Model], defaultModelId: String?, coarseGrouping: Bool = false) -> QuotaSnapshot? {
         guard !models.isEmpty else { return nil }
 
-        // 1. 全局按 name 友好名去重
+        var processedModels = models
+        if coarseGrouping {
+            var groups: [String: [Model]] = [:]
+            for model in models {
+                let sName = seriesName(from: model.name)
+                groups[sName, default: []].append(model)
+            }
+
+            var coarseModels: [Model] = []
+            for (sName, group) in groups {
+                let chosen: Model
+                if let defModel = group.first(where: { $0.id == defaultModelId }) {
+                    chosen = defModel
+                } else {
+                    chosen = group.min(by: { $0.remainingFraction < $1.remainingFraction }) ?? group[0]
+                }
+                coarseModels.append(Model(
+                    id: chosen.id,
+                    displayName: sName,
+                    remainingFraction: chosen.remainingFraction,
+                    resetAt: chosen.resetAt,
+                    isExhausted: chosen.isExhausted
+                ))
+            }
+            processedModels = coarseModels
+        }
+
+        // 1. 全局按 name 友好名去重（并保持原始顺序）
         var uniqueModelsDict: [String: Model] = [:]
-        for model in models {
+        for model in processedModels {
             if let existing = uniqueModelsDict[model.name] {
                 if model.id == defaultModelId {
                     uniqueModelsDict[model.name] = model
@@ -32,7 +59,17 @@ enum AntigravityNormalizer {
                 uniqueModelsDict[model.name] = model
             }
         }
-        let dedupedModels = Array(uniqueModelsDict.values)
+        
+        var dedupedModels: [Model] = []
+        var seenNames = Set<String>()
+        for model in processedModels {
+            if !seenNames.contains(model.name) {
+                seenNames.insert(model.name)
+                if let rep = uniqueModelsDict[model.name] {
+                    dedupedModels.append(rep)
+                }
+            }
+        }
 
         // 2. 确定主维度模型
         let main = dedupedModels.first { $0.id == defaultModelId } ?? dedupedModels[0]
@@ -73,6 +110,16 @@ enum AntigravityNormalizer {
             antigravityModels: switcherModels,
             activeAntigravityModelId: main.id
         )
+    }
+
+    /// 从模型展示名提取系列品牌名（如 "Gemini 3.5" -> "Gemini"）
+    static func seriesName(from name: String) -> String {
+        let delimiters = CharacterSet(charactersIn: " -/")
+        let parts = name.components(separatedBy: delimiters)
+        if let first = parts.first, !first.isEmpty {
+            return first
+        }
+        return name
     }
 
     /// 模型 id 友好显示：取最后一段（去掉 publisher/ 前缀）。
