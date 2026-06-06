@@ -5,6 +5,7 @@ struct ContentView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var service: QuotaService
     @State private var showSettings = false
+    @State private var isHovering = false
 
     @State private var collapseTask: Task<Void, Never>? = nil
 
@@ -29,7 +30,18 @@ struct ContentView: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous))
         .onHover { hovering in
+            isHovering = hovering
             handleHover(hovering)
+        }
+        .onChange(of: showSettings) { show in
+            if !show {
+                if !isHovering {
+                    triggerCollapseTask()
+                }
+            } else {
+                collapseTask?.cancel()
+                collapseTask = nil
+            }
         }
     }
 
@@ -249,23 +261,28 @@ struct ContentView: View {
         return baseHeight
     }
 
+    private func triggerCollapseTask() {
+        guard settings.autoCollapse else { return }
+        collapseTask?.cancel()
+        collapseTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: 800_000_000)
+                if !Task.isCancelled {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        settings.isCollapsed = true
+                    }
+                }
+            } catch {}
+        }
+    }
+
     private func handleHover(_ hovering: Bool) {
         if hovering {
             collapseTask?.cancel()
             collapseTask = nil
         } else {
-            guard settings.autoCollapse else { return }
-            collapseTask?.cancel()
-            collapseTask = Task {
-                do {
-                    try await Task.sleep(nanoseconds: 800_000_000)
-                    if !Task.isCancelled {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                            settings.isCollapsed = true
-                        }
-                    }
-                } catch {}
-            }
+            guard !showSettings else { return }
+            triggerCollapseTask()
         }
     }
 }
