@@ -432,4 +432,24 @@ final class WidgetWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.panel.frame.origin.x, visibleFrame.minX, accuracy: 0.001)
         XCTAssertEqual(controller.panel.frame.origin.y, visibleFrame.minY, accuracy: 0.001)
     }
+
+    func testWidgetThemePersistence() throws {
+        let suiteName = "test.AIQuotaWidget.AppSettings.WidgetTheme"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        var settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.widgetTheme, .waterBall) // Default should be waterBall
+        
+        settings.widgetTheme = .capybara
+        
+        // Re-init settings to see if it retrieves from defaults
+        settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.widgetTheme, .capybara)
+        
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
 }

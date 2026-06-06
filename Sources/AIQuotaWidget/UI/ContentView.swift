@@ -147,7 +147,8 @@ struct ContentView: View {
                     percent: snapshot.clampedPercent,
                     leftLabel: settings.t("left.suffix"),
                     waveEnabled: settings.waveEnabled,
-                    color: snapshot.ledStatus.color
+                    color: snapshot.ledStatus.color,
+                    theme: settings.widgetTheme
                 )
                 InfoBlockView(snapshot: snapshot, settings: settings)
                 Spacer(minLength: 0)
@@ -224,9 +225,15 @@ struct ContentView: View {
             leftLabel: data.leftLabel,
             waveEnabled: settings.waveEnabled && data.percent > 0,
             color: data.color,
-            size: 64
+            size: 64,
+            theme: settings.widgetTheme
         )
         .frame(width: 80, height: 80, alignment: .center)
+        .onTapGesture(count: 2) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                settings.isCollapsed = false
+            }
+        }
     }
 
     private var currentExpandedHeight: CGFloat {
@@ -246,11 +253,6 @@ struct ContentView: View {
         if hovering {
             collapseTask?.cancel()
             collapseTask = nil
-            if settings.isCollapsed {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    settings.isCollapsed = false
-                }
-            }
         } else {
             guard settings.autoCollapse else { return }
             collapseTask?.cancel()

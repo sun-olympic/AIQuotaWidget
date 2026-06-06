@@ -13,17 +13,23 @@ struct WaterBallView: View {
     let color: Color
     /// 水球尺寸。
     let size: CGFloat
+    /// 外观主题。
+    let theme: WidgetTheme
 
-    init(percent: Double, leftLabel: String, waveEnabled: Bool, color: Color, size: CGFloat = 96) {
+    init(percent: Double, leftLabel: String, waveEnabled: Bool, color: Color, size: CGFloat = 96, theme: WidgetTheme = .waterBall) {
         self.percent = percent
         self.leftLabel = leftLabel
         self.waveEnabled = waveEnabled
         self.color = color
         self.size = size
+        self.theme = theme
     }
 
     var body: some View {
         ZStack {
+            // Underlay theme background
+            ThemeBackgroundView(theme: theme, size: size)
+            
             if waveEnabled {
                 TimelineView(.animation) { timeline in
                     let phase = timeline.date.timeIntervalSinceReferenceDate
@@ -57,25 +63,30 @@ struct WaterBallView: View {
             let circle = Path(ellipseIn: CGRect(origin: .zero, size: size))
             context.clip(to: circle)
 
-            // 球体底色。
-            context.fill(circle, with: .color(color.opacity(0.15)))
+            // 球体底色（仅经典水球才填充底色）。
+            if theme == .waterBall {
+                context.fill(circle, with: .color(color.opacity(0.15)))
+            }
 
             let clamped = min(100, max(0, percent))
             let level = (1 - clamped / 100) * size.height
             let amplitude = animated ? max(2.0, size.height * 0.035) : 0
 
-            // 两层正弦波叠加，增加液态层次。
+            // 两层正弦波叠加，如果是角色主题则微调透明度以保留背景清晰度。
+            let op1 = theme == .waterBall ? 0.35 : 0.28
+            let op2 = theme == .waterBall ? 0.55 : 0.42
+
             context.fill(wavePath(size: size, level: level, amplitude: amplitude,
                                    phase: phase * 1.6, wavelength: size.width * 1.1),
-                         with: .color(color.opacity(0.35)))
+                         with: .color(color.opacity(op1)))
             context.fill(wavePath(size: size, level: level, amplitude: amplitude * 0.7,
                                    phase: phase * 2.3 + .pi, wavelength: size.width * 0.9),
-                         with: .color(color.opacity(0.55)))
+                         with: .color(color.opacity(op2)))
         }
     }
 
     private func wavePath(size: CGSize, level: CGFloat, amplitude: CGFloat,
-                          phase: Double, wavelength: CGFloat) -> Path {
+                           phase: Double, wavelength: CGFloat) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: 0, y: size.height))
         path.addLine(to: CGPoint(x: 0, y: level))
@@ -90,5 +101,322 @@ struct WaterBallView: View {
         path.addLine(to: CGPoint(x: size.width, y: size.height))
         path.closeSubpath()
         return path
+    }
+}
+
+/// 绘制各个角色主题的矢量背景视图。
+struct ThemeBackgroundView: View {
+    let theme: WidgetTheme
+    let size: CGFloat
+    
+    var body: some View {
+        ZStack {
+            switch theme {
+            case .waterBall:
+                EmptyView()
+            case .capybara:
+                capybaraView
+            case .doraemon:
+                doraemonView
+            case .snowWhite:
+                snowWhiteView
+            }
+        }
+    }
+    
+    // 矢量卡皮巴拉 (Capybara)
+    private var capybaraView: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            ZStack {
+                Circle().fill(Color(red: 0.95, green: 0.9, blue: 0.8))
+                
+                // 头部/身体轮廓
+                RoundedRectangle(cornerRadius: w * 0.25)
+                    .fill(Color(red: 0.62, green: 0.45, blue: 0.35))
+                    .frame(width: w * 0.7, height: h * 0.6)
+                
+                // 鼻子/嘴部区域
+                Capsule()
+                    .fill(Color(red: 0.45, green: 0.3, blue: 0.22))
+                    .frame(width: w * 0.3, height: h * 0.25)
+                    .offset(y: h * 0.1)
+                
+                // 黑色鼻尖
+                Capsule()
+                    .fill(Color.black)
+                    .frame(width: w * 0.12, height: h * 0.08)
+                    .offset(y: h * 0.02)
+                
+                // 眯眯眼
+                HStack(spacing: w * 0.25) {
+                    Path { path in
+                        path.addArc(center: CGPoint(x: w * 0.05, y: h * 0.05),
+                                    radius: w * 0.04,
+                                    startAngle: .degrees(180),
+                                    endAngle: .degrees(360),
+                                    clockwise: false)
+                    }
+                    .stroke(Color.black, lineWidth: w * 0.03)
+                    .frame(width: w * 0.1, height: h * 0.1)
+                    
+                    Path { path in
+                        path.addArc(center: CGPoint(x: w * 0.05, y: h * 0.05),
+                                    radius: w * 0.04,
+                                    startAngle: .degrees(180),
+                                    endAngle: .degrees(360),
+                                    clockwise: false)
+                    }
+                    .stroke(Color.black, lineWidth: w * 0.03)
+                    .frame(width: w * 0.1, height: h * 0.1)
+                }
+                .offset(y: -h * 0.08)
+                
+                // 腮红
+                HStack(spacing: w * 0.45) {
+                    Circle().fill(Color.red.opacity(0.3)).frame(width: w * 0.08, height: w * 0.08)
+                    Circle().fill(Color.red.opacity(0.3)).frame(width: w * 0.08, height: w * 0.08)
+                }
+                .offset(y: h * 0.05)
+                
+                // 经典头顶小橘子
+                ZStack {
+                    Circle().fill(Color.orange).frame(width: w * 0.18, height: w * 0.18)
+                    Capsule().fill(Color.green).frame(width: w * 0.05, height: w * 0.09)
+                        .rotationEffect(.degrees(45))
+                        .offset(x: w * 0.04, y: -h * 0.06)
+                }
+                .offset(y: -h * 0.32)
+            }
+            .frame(width: w, height: h)
+        }
+    }
+    
+    // 矢量哆啦A梦 (Doraemon)
+    private var doraemonView: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            ZStack {
+                Circle().fill(Color(red: 0.12, green: 0.53, blue: 0.9))
+                
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: w * 0.85, height: h * 0.8)
+                    .offset(y: h * 0.08)
+                
+                // 眼睛
+                HStack(spacing: w * 0.02) {
+                    ZStack {
+                        Ellipse().fill(Color.white)
+                            .overlay(Ellipse().stroke(Color.black, lineWidth: w * 0.015))
+                        Circle().fill(Color.black).frame(width: w * 0.04, height: w * 0.04)
+                            .offset(x: w * 0.02, y: 0)
+                    }
+                    .frame(width: w * 0.18, height: h * 0.24)
+                    
+                    ZStack {
+                        Ellipse().fill(Color.white)
+                            .overlay(Ellipse().stroke(Color.black, lineWidth: w * 0.015))
+                        Circle().fill(Color.black).frame(width: w * 0.04, height: w * 0.04)
+                            .offset(x: -w * 0.02, y: 0)
+                    }
+                    .frame(width: w * 0.18, height: h * 0.24)
+                }
+                .offset(y: -h * 0.12)
+                
+                // 红色鼻子
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: w * 0.12, height: w * 0.12)
+                    .offset(y: -h * 0.03)
+                    .overlay(
+                        Circle().fill(Color.white).frame(width: w * 0.04, height: w * 0.04)
+                            .offset(x: -w * 0.02, y: -h * 0.02)
+                    )
+                
+                // 笑容和中线
+                Path { path in
+                    path.move(to: CGPoint(x: w * 0.5, y: h * 0.53))
+                    path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.72))
+                    
+                    path.addArc(center: CGPoint(x: w * 0.5, y: h * 0.5),
+                                radius: w * 0.22,
+                                startAngle: .degrees(45),
+                                endAngle: .degrees(135),
+                                clockwise: false)
+                }
+                .stroke(Color.black, lineWidth: w * 0.02)
+                
+                // 胡须
+                Path { path in
+                    // Left whiskers
+                    path.move(to: CGPoint(x: w * 0.32, y: h * 0.45))
+                    path.addLine(to: CGPoint(x: w * 0.14, y: h * 0.42))
+                    
+                    path.move(to: CGPoint(x: w * 0.32, y: h * 0.52))
+                    path.addLine(to: CGPoint(x: w * 0.12, y: h * 0.52))
+                    
+                    path.move(to: CGPoint(x: w * 0.32, y: h * 0.59))
+                    path.addLine(to: CGPoint(x: w * 0.14, y: h * 0.62))
+                    
+                    // Right whiskers
+                    path.move(to: CGPoint(x: w * 0.68, y: h * 0.45))
+                    path.addLine(to: CGPoint(x: w * 0.86, y: h * 0.42))
+                    
+                    path.move(to: CGPoint(x: w * 0.68, y: h * 0.52))
+                    path.addLine(to: CGPoint(x: w * 0.88, y: h * 0.52))
+                    
+                    path.move(to: CGPoint(x: w * 0.68, y: h * 0.59))
+                    path.addLine(to: CGPoint(x: w * 0.86, y: h * 0.62))
+                }
+                .stroke(Color.black, lineWidth: w * 0.015)
+                
+                // 项圈与铃铛
+                VStack(spacing: 0) {
+                    Spacer()
+                    Capsule()
+                        .fill(Color.red)
+                        .frame(width: w * 0.6, height: h * 0.06)
+                    
+                    ZStack {
+                        Circle().fill(Color(red: 0.98, green: 0.85, blue: 0.1))
+                            .overlay(Circle().stroke(Color.black, lineWidth: w * 0.01))
+                        Rectangle().fill(Color.black).frame(width: w * 0.08, height: h * 0.015)
+                            .offset(y: -h * 0.005)
+                        Circle().fill(Color.black).frame(width: w * 0.025, height: w * 0.025)
+                            .offset(y: h * 0.01)
+                    }
+                    .frame(width: w * 0.12, height: w * 0.12)
+                    .offset(y: -h * 0.02)
+                }
+            }
+            .frame(width: w, height: h)
+        }
+    }
+    
+    // 矢量白雪公主 (Snow White)
+    private var snowWhiteView: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            ZStack {
+                Circle().fill(Color(red: 0.98, green: 0.96, blue: 0.8))
+                
+                // 黑色秀发
+                Circle()
+                    .fill(Color.black)
+                    .frame(width: w * 0.76, height: h * 0.76)
+                    .offset(y: -h * 0.05)
+                
+                // 脸部
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.93, blue: 0.88))
+                    .frame(width: w * 0.55, height: h * 0.55)
+                    .offset(y: h * 0.02)
+                
+                // 齐刘海
+                Path { path in
+                    path.addArc(center: CGPoint(x: w * 0.38, y: h * 0.32),
+                                radius: w * 0.18,
+                                startAngle: .degrees(180),
+                                endAngle: .degrees(360),
+                                clockwise: true)
+                    path.addArc(center: CGPoint(x: w * 0.62, y: h * 0.32),
+                                radius: w * 0.18,
+                                startAngle: .degrees(180),
+                                endAngle: .degrees(360),
+                                clockwise: true)
+                }
+                .fill(Color.black)
+                
+                // 蓝色立领服饰
+                Path { path in
+                    path.move(to: CGPoint(x: w * 0.28, y: h * 0.72))
+                    path.addLine(to: CGPoint(x: w * 0.72, y: h * 0.72))
+                    path.addLine(to: CGPoint(x: w * 0.65, y: h * 0.95))
+                    path.addLine(to: CGPoint(x: w * 0.35, y: h * 0.95))
+                    path.closeSubpath()
+                }
+                .fill(Color(red: 0.1, green: 0.25, blue: 0.55))
+                
+                // 白色高领
+                Path { path in
+                    path.move(to: CGPoint(x: w * 0.3, y: h * 0.62))
+                    path.addLine(to: CGPoint(x: w * 0.25, y: h * 0.5))
+                    path.addLine(to: CGPoint(x: w * 0.38, y: h * 0.65))
+                    path.closeSubpath()
+                    
+                    path.move(to: CGPoint(x: w * 0.7, y: h * 0.62))
+                    path.addLine(to: CGPoint(x: w * 0.75, y: h * 0.5))
+                    path.addLine(to: CGPoint(x: w * 0.62, y: h * 0.65))
+                    path.closeSubpath()
+                }
+                .fill(Color.white)
+                
+                // 红色蝴蝶结头饰
+                ZStack {
+                    Path { path in
+                        path.move(to: CGPoint(x: w * 0.48, y: h * 0.15))
+                        path.addQuadCurve(to: CGPoint(x: w * 0.36, y: h * 0.08), control: CGPoint(x: w * 0.4, y: h * 0.18))
+                        path.addQuadCurve(to: CGPoint(x: w * 0.48, y: h * 0.15), control: CGPoint(x: w * 0.42, y: h * 0.06))
+                    }
+                    .fill(Color.red)
+                    
+                    Path { path in
+                        path.move(to: CGPoint(x: w * 0.52, y: h * 0.15))
+                        path.addQuadCurve(to: CGPoint(x: w * 0.64, y: h * 0.08), control: CGPoint(x: w * 0.6, y: h * 0.18))
+                        path.addQuadCurve(to: CGPoint(x: w * 0.52, y: h * 0.15), control: CGPoint(x: w * 0.58, y: h * 0.06))
+                    }
+                    .fill(Color.red)
+                    
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: w * 0.08, height: w * 0.08)
+                        .offset(x: 0, y: -h * 0.35)
+                }
+                
+                // 闭眼睫毛
+                HStack(spacing: w * 0.16) {
+                    Path { path in
+                        path.addArc(center: CGPoint(x: w * 0.05, y: h * 0.05),
+                                    radius: w * 0.03,
+                                    startAngle: .degrees(0),
+                                    endAngle: .degrees(180),
+                                    clockwise: false)
+                    }
+                    .stroke(Color.black, lineWidth: w * 0.015)
+                    .frame(width: w * 0.1, height: h * 0.1)
+                    
+                    Path { path in
+                        path.addArc(center: CGPoint(x: w * 0.05, y: h * 0.05),
+                                    radius: w * 0.03,
+                                    startAngle: .degrees(0),
+                                    endAngle: .degrees(180),
+                                    clockwise: false)
+                    }
+                    .stroke(Color.black, lineWidth: w * 0.015)
+                    .frame(width: w * 0.1, height: h * 0.1)
+                }
+                .offset(y: -h * 0.02)
+                
+                // 红润腮红与红唇
+                Group {
+                    HStack(spacing: w * 0.28) {
+                        Circle().fill(Color.red.opacity(0.25)).frame(width: w * 0.07, height: w * 0.07)
+                        Circle().fill(Color.red.opacity(0.25)).frame(width: w * 0.07, height: w * 0.07)
+                    }
+                    .offset(y: h * 0.05)
+                    
+                    Image(systemName: "suit.heart.fill")
+                        .font(.system(size: w * 0.07))
+                        .foregroundStyle(.red)
+                        .rotationEffect(.degrees(180))
+                        .offset(y: h * 0.1)
+                }
+            }
+            .frame(width: w, height: h)
+        }
     }
 }

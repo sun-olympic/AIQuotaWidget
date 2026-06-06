@@ -22,6 +22,12 @@ struct SettingsView: View {
                 }
             }
 
+            Picker(settings.t("settings.theme"), selection: $settings.widgetTheme) {
+                ForEach(WidgetTheme.allCases) { theme in
+                    Text(settings.t(theme.localizationKey)).tag(theme)
+                }
+            }
+
             Toggle(settings.t("settings.wave"), isOn: $settings.waveEnabled)
             Toggle(settings.t("settings.pinned"), isOn: $settings.pinnedOnTop)
             Toggle(settings.t("settings.coarseModelGrouping"), isOn: $settings.coarseModelGrouping)

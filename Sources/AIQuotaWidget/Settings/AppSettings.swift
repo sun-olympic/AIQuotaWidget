@@ -16,6 +16,7 @@ final class AppSettings: ObservableObject {
         static let antigravityDefaultModelId = "settings.antigravityDefaultModelId"
         static let coarseModelGrouping = "settings.coarseModelGrouping"
         static let autoCollapse = "settings.autoCollapse"
+        static let widgetTheme = "settings.widgetTheme"
     }
 
     private let defaults: UserDefaults
@@ -70,6 +71,10 @@ final class AppSettings: ObservableObject {
 
     @Published var isCollapsed: Bool = false
 
+    @Published var widgetTheme: WidgetTheme {
+        didSet { defaults.set(widgetTheme.rawValue, forKey: Key.widgetTheme) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -88,6 +93,12 @@ final class AppSettings: ObservableObject {
         self.pinnedOnTop = defaults.object(forKey: Key.pinnedOnTop) as? Bool ?? true
         self.coarseModelGrouping = defaults.object(forKey: Key.coarseModelGrouping) as? Bool ?? true
         self.autoCollapse = defaults.object(forKey: Key.autoCollapse) as? Bool ?? true
+        
+        if let rawTheme = defaults.string(forKey: Key.widgetTheme), let t = WidgetTheme(rawValue: rawTheme) {
+            self.widgetTheme = t
+        } else {
+            self.widgetTheme = .waterBall
+        }
 
         let enabled: [ProductTab]
         if let rawArray = defaults.stringArray(forKey: Key.enabledTabs) {
@@ -129,6 +140,18 @@ final class AppSettings: ObservableObject {
     func saveWindowOrigin(_ origin: CGPoint) {
         defaults.set([Double(origin.x), Double(origin.y)], forKey: Key.windowFrame)
     }
+}
+
+/// 悬浮球的外观主题。
+enum WidgetTheme: String, CaseIterable, Identifiable {
+    case waterBall = "waterBall"
+    case capybara = "capybara"
+    case doraemon = "doraemon"
+    case snowWhite = "snowWhite"
+    
+    var id: String { rawValue }
+    
+    var localizationKey: String { "theme.\(rawValue)" }
 }
 
 /// 额度来源（同时作为顶部 Tab）。
