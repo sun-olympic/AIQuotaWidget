@@ -23,12 +23,12 @@ struct ContentView: View {
         .frame(width: settings.isCollapsed ? 80 : 320,
                height: settings.isCollapsed ? 80 : currentExpandedHeight)
         .background(VisualEffectView(material: .hudWindow))
-        .clipShape(RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous)
+            RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous)
                 .strokeBorder(.white.opacity(0.18), lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
         .onHover { hovering in
             isHovering = hovering
             handleHover(hovering)
@@ -42,6 +42,9 @@ struct ContentView: View {
                 collapseTask?.cancel()
                 collapseTask = nil
             }
+        }
+        .popover(isPresented: $showSettings) {
+            SettingsView(settings: settings)
         }
     }
 
@@ -91,9 +94,6 @@ struct ContentView: View {
             }
             iconButton("gearshape", help: settings.t("action.settings")) {
                 showSettings.toggle()
-            }
-            .popover(isPresented: $showSettings) {
-                SettingsView(settings: settings)
             }
             iconButton("power", help: settings.t("action.quit")) {
                 NSApplication.shared.terminate(nil)
@@ -246,6 +246,26 @@ struct ContentView: View {
                 settings.isCollapsed = false
             }
         }
+        .contextMenu {
+            Button(settings.t("action.expand")) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    settings.isCollapsed = false
+                }
+            }
+            Divider()
+            Button(settings.t("action.refresh")) {
+                service.refreshNow()
+            }
+            Toggle(settings.t("settings.pinned"), isOn: $settings.pinnedOnTop)
+            Toggle(settings.t("settings.autoCollapse"), isOn: $settings.autoCollapse)
+            Divider()
+            Button(settings.t("action.settings")) {
+                showSettings = true
+            }
+            Button(settings.t("action.quit")) {
+                NSApplication.shared.terminate(nil)
+            }
+        }
     }
 
     private var currentExpandedHeight: CGFloat {
@@ -259,6 +279,14 @@ struct ContentView: View {
             return baseHeight + secondaryHeight
         }
         return baseHeight
+    }
+
+    private var currentCornerRadius: CGFloat {
+        if settings.isCollapsed {
+            return settings.widgetTheme == .capybara ? 20 : 40
+        } else {
+            return 18
+        }
     }
 
     private func triggerCollapseTask() {

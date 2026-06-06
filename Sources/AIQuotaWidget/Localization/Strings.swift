@@ -71,6 +71,7 @@ enum Strings {
         "action.language": [.english: "Switch language", .chinese: "切换语言"],
         "action.quit": [.english: "Quit", .chinese: "退出"],
         "action.close": [.english: "Close", .chinese: "关闭"],
+        "action.expand": [.english: "Expand", .chinese: "展开"],
         "interval.seconds": [.english: "sec", .chinese: "秒"],
         "interval.minutes": [.english: "min", .chinese: "分钟"],
         "time.days": [.english: "d", .chinese: "天"],
