@@ -262,6 +262,13 @@ struct ContentView: View {
             Button(settings.t("action.settings")) {
                 showSettings = true
             }
+            Menu(settings.t("settings.theme")) {
+                ForEach(WidgetTheme.allCases) { theme in
+                    Button(settings.t(theme.localizationKey)) {
+                        settings.widgetTheme = theme
+                    }
+                }
+            }
             Button(settings.t("action.quit")) {
                 NSApplication.shared.terminate(nil)
             }
