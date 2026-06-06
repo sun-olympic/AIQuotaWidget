@@ -24,6 +24,32 @@ struct SettingsView: View {
 
             Toggle(settings.t("settings.wave"), isOn: $settings.waveEnabled)
             Toggle(settings.t("settings.pinned"), isOn: $settings.pinnedOnTop)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(settings.t("settings.enabledTabs"))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.8))
+
+                ForEach(ProductTab.allCases) { tab in
+                    Toggle(settings.t(tab.titleKey), isOn: Binding(
+                        get: { settings.enabledTabs.contains(tab) },
+                        set: { isEnabled in
+                            if isEnabled {
+                                if !settings.enabledTabs.contains(tab) {
+                                    settings.enabledTabs.append(tab)
+                                }
+                            } else {
+                                if settings.enabledTabs.count > 1 {
+                                    settings.enabledTabs.removeAll { $0 == tab }
+                                }
+                            }
+                        }
+                    ))
+                    .toggleStyle(.checkbox)
+                }
+            }
         }
         .padding(16)
         .frame(width: 240)

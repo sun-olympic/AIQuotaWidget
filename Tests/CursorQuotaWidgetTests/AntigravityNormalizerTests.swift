@@ -39,26 +39,6 @@ final class AntigravityNormalizerTests: XCTestCase {
     func testEmptyModelsReturnsNil() {
         XCTAssertNil(AntigravityNormalizer.make(models: [], defaultModelId: nil))
     }
-
-    func testDumpRealModels() throws {
-        let url = URL(fileURLWithPath: "/Users/sunqilei/Documents/GitHub/Personal/CursorQuotaWidget/models.json")
-        let data = try Data(contentsOf: url)
-        if let snapshot = AntigravityProvider.normalize(data) {
-            print("--- SNAPSHOT ---")
-            print("Remaining percent: \(snapshot.remainingPercent)")
-            print("Primary text: \(snapshot.primaryText)")
-            if let windows = snapshot.secondaryWindows {
-                print("Secondary windows count: \(windows.count)")
-                for w in windows {
-                    print("  - \(w.name): \(w.remainingPercent)% (resetAt: \(String(describing: w.resetAt)))")
-                }
-            } else {
-                print("No secondary windows")
-            }
-        } else {
-            print("Failed to normalize models.json")
-        }
-    }
     func testDeduplicationAndSorting() throws {
         let models = [
             AntigravityNormalizer.Model(id: "m1", displayName: "Gemini 3.1 Flash Lite", remainingFraction: 0.8, resetAt: nil, isExhausted: false),

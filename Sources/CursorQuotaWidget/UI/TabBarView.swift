@@ -8,7 +8,7 @@ struct TabBarView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(ProductTab.allCases) { value in
+            ForEach(settings.enabledTabs) { value in
                 tab(value, title: settings.t(value.titleKey))
             }
         }

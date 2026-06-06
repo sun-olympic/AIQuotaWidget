@@ -66,8 +66,8 @@ final class QuotaService: ObservableObject {
 
     func start() {
         // 启动刷新全部来源（用于判定可用性与默认 Tab 落点），各自独立、互不阻塞。
-        initialPending = Set(ProductTab.allCases)
-        for tab in ProductTab.allCases { refresh(tab) }
+        initialPending = Set(settings.enabledTabs)
+        for tab in settings.enabledTabs { refresh(tab) }
         rescheduleTimer()
     }
 
@@ -121,8 +121,8 @@ final class QuotaService: ObservableObject {
     private func maybeAutoSelectDefault() {
         guard autoSelectArmed else { return }
         if case .loaded = state(for: settings.selectedTab) { return }
-        // 偏好顺序：Cursor → Codex → Antigravity。
-        for tab in ProductTab.allCases where tab != settings.selectedTab {
+        // 仅在启用的 Tab 中且就绪的来源中自动选择
+        for tab in settings.enabledTabs where tab != settings.selectedTab {
             if case .loaded = state(for: tab) {
                 autoSelectArmed = false
                 settings.selectedTab = tab

@@ -12,6 +12,7 @@ final class AppSettings: ObservableObject {
         static let pinnedOnTop = "settings.pinnedOnTop"
         static let windowFrame = "settings.windowFrame"
         static let selectedTab = "settings.selectedTab"
+        static let enabledTabs = "settings.enabledTabs"
     }
 
     private let defaults: UserDefaults
@@ -39,6 +40,13 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(selectedTab.rawValue, forKey: Key.selectedTab) }
     }
 
+    @Published var enabledTabs: [ProductTab] {
+        didSet {
+            defaults.set(enabledTabs.map { $0.rawValue }, forKey: Key.enabledTabs)
+            ensureSelectedTabValid()
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -56,10 +64,25 @@ final class AppSettings: ObservableObject {
         self.waveEnabled = defaults.object(forKey: Key.waveEnabled) as? Bool ?? true
         self.pinnedOnTop = defaults.object(forKey: Key.pinnedOnTop) as? Bool ?? true
 
-        if let raw = defaults.string(forKey: Key.selectedTab), let tab = ProductTab(rawValue: raw) {
+        let enabled: [ProductTab]
+        if let rawArray = defaults.stringArray(forKey: Key.enabledTabs) {
+            let parsed = rawArray.compactMap { ProductTab(rawValue: $0) }
+            enabled = parsed.isEmpty ? ProductTab.allCases : parsed
+        } else {
+            enabled = ProductTab.allCases
+        }
+        self.enabledTabs = enabled
+
+        if let raw = defaults.string(forKey: Key.selectedTab), let tab = ProductTab(rawValue: raw), enabled.contains(tab) {
             self.selectedTab = tab
         } else {
-            self.selectedTab = .cursor
+            self.selectedTab = enabled.first ?? .cursor
+        }
+    }
+
+    func ensureSelectedTabValid() {
+        if !enabledTabs.contains(selectedTab) {
+            selectedTab = enabledTabs.first ?? .cursor
         }
     }
 

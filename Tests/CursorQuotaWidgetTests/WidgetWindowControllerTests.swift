@@ -48,4 +48,38 @@ final class WidgetWindowControllerTests: XCTestCase {
         
         waitForExpectations(timeout: 1.0, handler: nil)
     }
+
+    func testEnabledTabsAndSelectedTabValidation() throws {
+        // Use a clean temporary UserDefaults to isolate the test
+        let suiteName = "test.CursorQuotaWidget.AppSettings"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        let settings = AppSettings(defaults: defaults)
+        
+        // Initial setup should have all cases enabled and selected tab as cursor
+        XCTAssertEqual(settings.enabledTabs, ProductTab.allCases)
+        XCTAssertEqual(settings.selectedTab, .cursor)
+        
+        // Disable codex and antigravity (leaving only cursor)
+        settings.enabledTabs = [.cursor]
+        XCTAssertEqual(settings.selectedTab, .cursor)
+        
+        // Try setting selectedTab to a disabled tab (.codex)
+        settings.selectedTab = .codex
+        // Should immediately trigger ensureSelectedTabValid and reset to the first enabled tab (.cursor)
+        settings.ensureSelectedTabValid()
+        XCTAssertEqual(settings.selectedTab, .cursor)
+        
+        // Change enabledTabs to [.antigravity, .codex] (selectedTab .cursor is now disabled)
+        settings.enabledTabs = [.antigravity, .codex]
+        // selectedTab should automatically fall back to the first enabled tab (.antigravity)
+        XCTAssertEqual(settings.selectedTab, .antigravity)
+        
+        // Clean up
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
 }

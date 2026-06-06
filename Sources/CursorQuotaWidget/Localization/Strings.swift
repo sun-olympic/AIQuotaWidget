@@ -53,6 +53,7 @@ enum Strings {
         "codex.login.hint": [.english: "Please sign in to Codex", .chinese: "请先在 Codex 中登录"],
         "antigravity.login.hint": [.english: "Please sign in to Antigravity", .chinese: "请先在 Antigravity 中登录"],
         "settings.title": [.english: "Settings", .chinese: "设置"],
+        "settings.enabledTabs": [.english: "Supported Tools", .chinese: "支持的工具"],
         "settings.language": [.english: "Language", .chinese: "语言"],
         "settings.refreshInterval": [.english: "Refresh interval", .chinese: "刷新间隔"],
         "settings.wave": [.english: "Water wave animation", .chinese: "水球晃动动画"],
