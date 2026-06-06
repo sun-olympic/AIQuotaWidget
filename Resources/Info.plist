@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>CursorQuotaWidget</string>
+    <string>AIQuotaWidget</string>
     <key>CFBundleDisplayName</key>
-    <string>Cursor Quota</string>
+    <string>AI Quota</string>
     <key>CFBundleIdentifier</key>
-    <string>com.local.cursorquotawidget</string>
+    <string>com.local.aiquotawidget</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleShortVersionString</key>
@@ -15,7 +15,7 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
-    <string>CursorQuotaWidget</string>
+    <string>AIQuotaWidget</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <!-- Agent/Accessory：不出现在 Dock 与 Cmd+Tab -->

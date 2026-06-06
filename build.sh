@@ -1,9 +1,9 @@
 #!/bin/bash
-# 构建 CursorQuotaWidget.app（无需完整 Xcode，仅用 Command Line Tools 的 swiftc）。
+# 构建 AIQuotaWidget.app（无需完整 Xcode，仅用 Command Line Tools 的 swiftc）。
 # 若你的机器装有完整 Xcode，也可直接用 `swift build` 或在 Xcode 中打开 Package.swift。
 set -euo pipefail
 
-APP_NAME="CursorQuotaWidget"
+APP_NAME="AIQuotaWidget"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$ROOT/.build/app"
 BUNDLE="$BUILD_DIR/$APP_NAME.app"

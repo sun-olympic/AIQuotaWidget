@@ -1,5 +1,5 @@
 import XCTest
-@testable import CursorQuotaWidget
+@testable import AIQuotaWidget
 
 final class CodexNormalizerTests: XCTestCase {
 

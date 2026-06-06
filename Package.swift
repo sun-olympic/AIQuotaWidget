@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "CursorQuotaWidget",
+    name: "AIQuotaWidget",
     platforms: [
         .macOS(.v13)
     ],
     targets: [
         .executableTarget(
-            name: "CursorQuotaWidget",
-            path: "Sources/CursorQuotaWidget",
+            name: "AIQuotaWidget",
+            path: "Sources/AIQuotaWidget",
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]
         ),
         .testTarget(
-            name: "CursorQuotaWidgetTests",
-            dependencies: ["CursorQuotaWidget"],
-            path: "Tests/CursorQuotaWidgetTests"
+            name: "AIQuotaWidgetTests",
+            dependencies: ["AIQuotaWidget"],
+            path: "Tests/AIQuotaWidgetTests"
         )
     ]
 )

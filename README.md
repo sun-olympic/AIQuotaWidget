@@ -52,7 +52,7 @@ swift run
 
 ```bash
 ./build.sh
-open .build/app/CursorQuotaWidget.app
+open .build/app/AIQuotaWidget.app
 ```
 
 > ⚠️ **已知环境前置**：部分 macOS「命令行工具（Command Line Tools）」安装存在重复模块映射 bug
@@ -83,7 +83,7 @@ swift test
 ## 架构
 
 ```
-Sources/CursorQuotaWidget/
+Sources/AIQuotaWidget/
 ├── App/            程序入口、Accessory 策略、AppDelegate
 ├── Window/         FloatingPanel(NSPanel)、VisualEffectView、窗口控制器（拖拽/置顶/位置记忆）
 ├── Data/           凭证读取、令牌刷新、统一请求封装、Provider（Cursor legacy/usage-based/自动探测、Codex app-server、Antigravity 本地/云）、归一化（Cursor/Codex/Antigravity）、服务编排（三来源独立状态）
@@ -102,4 +102,4 @@ Sources/CursorQuotaWidget/
 - **Codex**：本机子进程 `codex app-server` 的 JSON-RPC `initialize` + `account/rateLimits/read`（`app-server` 官方标注 experimental）。
 - **Antigravity**：本地 Language Server 端点；云模式 `POST https://oauth2.googleapis.com/token`（固定 Google client）+ `POST https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels`（`v1internal` 为内部端点）。云模式凭证仅本机使用、不外传；优先走本地模式以减少对云端逆向的依赖。
 
-所有接口 URL、`client_id`、命令与方法名、字段名集中在 `Sources/CursorQuotaWidget/Data/Constants.swift`，便于接口变更时快速修补。任一来源失效仅影响其自身 Tab，不拖垮其它来源。
+所有接口 URL、`client_id`、命令与方法名、字段名集中在 `Sources/AIQuotaWidget/Data/Constants.swift`，便于接口变更时快速修补。任一来源失效仅影响其自身 Tab，不拖垮其它来源。

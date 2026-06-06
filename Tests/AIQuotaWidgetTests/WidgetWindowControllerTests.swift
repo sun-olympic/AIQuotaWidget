@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import CursorQuotaWidget
+@testable import AIQuotaWidget
 
 final class WidgetWindowControllerTests: XCTestCase {
 
@@ -51,7 +51,7 @@ final class WidgetWindowControllerTests: XCTestCase {
 
     func testEnabledTabsAndSelectedTabValidation() throws {
         // Use a clean temporary UserDefaults to isolate the test
-        let suiteName = "test.CursorQuotaWidget.AppSettings"
+        let suiteName = "test.AIQuotaWidget.AppSettings"
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
         guard let defaults = UserDefaults(suiteName: suiteName) else {
             XCTFail("Failed to create temporary UserDefaults")
