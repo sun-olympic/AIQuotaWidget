@@ -6,7 +6,34 @@ struct ContentView: View {
     @ObservedObject var service: QuotaService
     @State private var showSettings = false
 
+    @State private var collapseTask: Task<Void, Never>? = nil
+
     var body: some View {
+        Group {
+            if settings.isCollapsed {
+                collapsedView
+                    .transition(.scale.combined(with: .opacity))
+            } else {
+                expandedView
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(settings.isCollapsed ? 0 : 14)
+        .frame(width: settings.isCollapsed ? 80 : 320,
+               height: settings.isCollapsed ? 80 : currentExpandedHeight)
+        .background(VisualEffectView(material: .hudWindow))
+        .clipShape(RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous)
+                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: settings.isCollapsed ? 40 : 18, style: .continuous))
+        .onHover { hovering in
+            handleHover(hovering)
+        }
+    }
+
+    private var expandedView: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
             TabBarView(selected: settings.selectedTab,
@@ -15,14 +42,6 @@ struct ContentView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .padding(14)
-        .frame(width: 320, height: settings.selectedTab == .antigravity ? 320 : 220)
-        .background(VisualEffectView(material: .hudWindow))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
-        )
     }
 
     // MARK: - Header
@@ -137,7 +156,7 @@ struct ContentView: View {
                 SecondaryWindowsView(
                     windows: windows,
                     settings: settings,
-                    maxHeight: settings.selectedTab == .antigravity ? 120 : 56
+                    maxHeight: max(25.0, min(Double(windows.count) * 25.0, settings.selectedTab == .antigravity ? 120.0 : 56.0))
                 )
             }
         }
@@ -159,5 +178,92 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 8)
+    }
+
+    // MARK: - Collapse & Adaptive Height Helpers
+
+    private struct CollapsedWaterBallData {
+        let percent: Double
+        let leftLabel: String
+        let color: Color
+    }
+
+    private var collapsedWaterBallData: CollapsedWaterBallData {
+        switch service.state(for: settings.selectedTab) {
+        case .loaded(let snapshot):
+            return CollapsedWaterBallData(
+                percent: snapshot.clampedPercent,
+                leftLabel: settings.t("left.suffix"),
+                color: snapshot.ledStatus.color
+            )
+        case .loading:
+            return CollapsedWaterBallData(
+                percent: 0,
+                leftLabel: "...",
+                color: .blue
+            )
+        case .notLoggedIn, .needsReLogin, .notInstalled:
+            return CollapsedWaterBallData(
+                percent: 0,
+                leftLabel: "?",
+                color: .orange
+            )
+        case .error:
+            return CollapsedWaterBallData(
+                percent: 0,
+                leftLabel: "!",
+                color: .red
+            )
+        }
+    }
+
+    private var collapsedView: some View {
+        let data = collapsedWaterBallData
+        return WaterBallView(
+            percent: data.percent,
+            leftLabel: data.leftLabel,
+            waveEnabled: settings.waveEnabled && data.percent > 0,
+            color: data.color,
+            size: 64
+        )
+        .frame(width: 80, height: 80, alignment: .center)
+    }
+
+    private var currentExpandedHeight: CGFloat {
+        let baseHeight: CGFloat = 220
+        if case .loaded(let snapshot) = service.state(for: settings.selectedTab),
+           let windows = snapshot.secondaryWindows,
+           !windows.isEmpty {
+            let maxSecondaryHeight = settings.selectedTab == .antigravity ? 120.0 : 56.0
+            let count = Double(windows.count)
+            let secondaryHeight = max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
+            return baseHeight + secondaryHeight
+        }
+        return baseHeight
+    }
+
+    private func handleHover(_ hovering: Bool) {
+        if hovering {
+            collapseTask?.cancel()
+            collapseTask = nil
+            if settings.isCollapsed {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    settings.isCollapsed = false
+                }
+            }
+        } else {
+            guard settings.autoCollapse else { return }
+            collapseTask?.cancel()
+            collapseTask = Task {
+                do {
+                    try await Task.sleep(nanoseconds: 800_000_000)
+                    if !Task.isCancelled {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                            settings.isCollapsed = true
+                        }
+                    }
+                } catch {}
+            }
+        }
     }
 }

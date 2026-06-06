@@ -32,8 +32,12 @@ final class FloatingPanel: NSPanel {
     override func setFrame(_ frameRect: NSRect, display displayFlag: Bool) {
         var rect = frameRect
         if frame.size.height > 0 && abs(rect.size.height - frame.size.height) > 0.001 {
-            let diff = rect.size.height - frame.size.height
-            rect.origin.y = frame.origin.y - diff
+            let diffY = rect.size.height - frame.size.height
+            rect.origin.y = frame.origin.y - diffY
+        }
+        if frame.size.width > 0 && abs(rect.size.width - frame.size.width) > 0.001 {
+            let diffX = rect.size.width - frame.size.width
+            rect.origin.x = frame.origin.x - diffX
         }
         super.setFrame(rect, display: displayFlag)
     }
@@ -41,8 +45,12 @@ final class FloatingPanel: NSPanel {
     override func setFrame(_ frameRect: NSRect, display displayFlag: Bool, animate animateFlag: Bool) {
         var rect = frameRect
         if frame.size.height > 0 && abs(rect.size.height - frame.size.height) > 0.001 {
-            let diff = rect.size.height - frame.size.height
-            rect.origin.y = frame.origin.y - diff
+            let diffY = rect.size.height - frame.size.height
+            rect.origin.y = frame.origin.y - diffY
+        }
+        if frame.size.width > 0 && abs(rect.size.width - frame.size.width) > 0.001 {
+            let diffX = rect.size.width - frame.size.width
+            rect.origin.x = frame.origin.x - diffX
         }
         super.setFrame(rect, display: displayFlag, animate: animateFlag)
     }

@@ -59,6 +59,7 @@ enum Strings {
         "settings.wave": [.english: "Water wave animation", .chinese: "水球晃动动画"],
         "settings.pinned": [.english: "Always on top", .chinese: "窗口置顶"],
         "settings.coarseModelGrouping": [.english: "Group same series models (Antigravity)", .chinese: "合并同系列模型 (Antigravity)"],
+        "settings.autoCollapse": [.english: "Auto-collapse when mouse leaves", .chinese: "鼠标离开后自动收起"],
         "action.refresh": [.english: "Refresh", .chinese: "刷新"],
         "action.pin": [.english: "Pin on top", .chinese: "置顶"],
         "action.settings": [.english: "Settings", .chinese: "设置"],

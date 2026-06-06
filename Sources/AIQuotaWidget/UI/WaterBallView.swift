@@ -11,6 +11,16 @@ struct WaterBallView: View {
     let waveEnabled: Bool
     /// 主色（随 LED 状态变化）。
     let color: Color
+    /// 水球尺寸。
+    let size: CGFloat
+
+    init(percent: Double, leftLabel: String, waveEnabled: Bool, color: Color, size: CGFloat = 96) {
+        self.percent = percent
+        self.leftLabel = leftLabel
+        self.waveEnabled = waveEnabled
+        self.color = color
+        self.size = size
+    }
 
     var body: some View {
         ZStack {
@@ -27,16 +37,16 @@ struct WaterBallView: View {
         .overlay(
             Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5)
         )
-        .frame(width: 96, height: 96)
+        .frame(width: size, height: size)
     }
 
     private var label: some View {
         VStack(spacing: 0) {
             Text("\(Int(percent.rounded()))%")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.system(size: size * (22.0 / 96.0), weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             Text(leftLabel)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: size * (10.0 / 96.0), weight: .medium))
                 .foregroundStyle(.white.opacity(0.85))
         }
         .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)

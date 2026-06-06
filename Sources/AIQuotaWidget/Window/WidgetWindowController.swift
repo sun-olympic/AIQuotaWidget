@@ -8,17 +8,44 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
 
     let panel: FloatingPanel
     private let settings: AppSettings
+    private let service: QuotaService?
     private var cancellables = Set<AnyCancellable>()
 
     static let defaultSize = NSSize(width: 320, height: 220)
 
-    init(settings: AppSettings, rootView: some View) {
+    init(settings: AppSettings, service: QuotaService? = nil, rootView: some View) {
         self.settings = settings
+        self.service = service
 
         let origin = settings.savedWindowOrigin()
             ?? CGPoint(x: 200, y: 400)
-        let initialHeight: CGFloat = (settings.selectedTab == .antigravity) ? 320 : 220
-        let initialSize = NSSize(width: 320, height: initialHeight)
+        
+        let initialSize: NSSize
+        if settings.isCollapsed {
+            initialSize = NSSize(width: 80, height: 80)
+        } else {
+            let baseHeight: CGFloat = 220
+            var secondaryHeight: CGFloat = 0
+            if let service = service {
+                let state: WidgetState
+                switch settings.selectedTab {
+                case .cursor: state = service.cursorState
+                case .codex: state = service.codexState
+                case .antigravity: state = service.antigravityState
+                }
+                if case .loaded(let snapshot) = state,
+                   let windows = snapshot.secondaryWindows,
+                   !windows.isEmpty {
+                    let maxSecondaryHeight = settings.selectedTab == .antigravity ? 120.0 : 56.0
+                    let count = Double(windows.count)
+                    secondaryHeight = max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
+                }
+            } else {
+                secondaryHeight = (settings.selectedTab == .antigravity) ? 100 : 0
+            }
+            initialSize = NSSize(width: 320, height: baseHeight + secondaryHeight)
+        }
+        
         let rect = NSRect(origin: origin, size: initialSize)
         self.panel = FloatingPanel(contentRect: rect)
 
@@ -37,12 +64,18 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
             .sink { [weak self] pinned in self?.applyPinState(pinned) }
             .store(in: &cancellables)
 
-        // Tab 变化时自动调整窗口高度
-        settings.$selectedTab
-            .sink { [weak self] tab in
-                DispatchQueue.main.async {
-                    self?.updateWindowHeight(for: tab)
-                }
+        // Observe settings changes and state changes to update window size
+        let selectedTabPub = settings.$selectedTab.map { _ in () }.eraseToAnyPublisher()
+        let isCollapsedPub = settings.$isCollapsed.map { _ in () }.eraseToAnyPublisher()
+        
+        let cursorPub = service?.$cursorState.map { _ in () }.eraseToAnyPublisher() ?? Just(()).eraseToAnyPublisher()
+        let codexPub = service?.$codexState.map { _ in () }.eraseToAnyPublisher() ?? Just(()).eraseToAnyPublisher()
+        let antigravityPub = service?.$antigravityState.map { _ in () }.eraseToAnyPublisher() ?? Just(()).eraseToAnyPublisher()
+        
+        selectedTabPub
+            .merge(with: isCollapsedPub, cursorPub, codexPub, antigravityPub)
+            .sink { [weak self] _ in
+                self?.recalculateWindowSize()
             }
             .store(in: &cancellables)
     }
@@ -55,13 +88,44 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         panel.level = pinned ? .floating : .normal
     }
 
-    private func updateWindowHeight(for tab: ProductTab) {
-        let targetHeight: CGFloat = (tab == .antigravity) ? 320 : 220
+    private func recalculateWindowSize() {
+        let targetSize: NSSize
+        if settings.isCollapsed {
+            targetSize = NSSize(width: 80, height: 80)
+        } else {
+            let baseHeight: CGFloat = 220
+            var secondaryHeight: CGFloat = 0
+            if let service = service {
+                let state: WidgetState
+                switch settings.selectedTab {
+                case .cursor: state = service.cursorState
+                case .codex: state = service.codexState
+                case .antigravity: state = service.antigravityState
+                }
+                if case .loaded(let snapshot) = state,
+                   let windows = snapshot.secondaryWindows,
+                   !windows.isEmpty {
+                    let maxSecondaryHeight = settings.selectedTab == .antigravity ? 120.0 : 56.0
+                    let count = Double(windows.count)
+                    secondaryHeight = max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
+                }
+            } else {
+                secondaryHeight = (settings.selectedTab == .antigravity) ? 100 : 0
+            }
+            targetSize = NSSize(width: 320, height: baseHeight + secondaryHeight)
+        }
+        updateWindowFrame(targetSize: targetSize)
+    }
+
+    private func updateWindowFrame(targetSize: NSSize) {
         var frame = panel.frame
-        let diff = targetHeight - frame.size.height
-        if abs(diff) > 0.001 {
-            frame.origin.y -= diff // 保持顶部不变，向下延展
-            frame.size.height = targetHeight
+        let diffHeight = targetSize.height - frame.size.height
+        let diffWidth = targetSize.width - frame.size.width
+        
+        if abs(diffHeight) > 0.001 || abs(diffWidth) > 0.001 {
+            frame.origin.y -= diffHeight
+            frame.origin.x -= diffWidth
+            frame.size = targetSize
             panel.setFrame(frame, display: true, animate: true)
         }
     }

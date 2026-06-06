@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = AppSettings()
         let service = QuotaService(settings: settings)
         let root = ContentView(settings: settings, service: service)
-        let controller = WidgetWindowController(settings: settings, rootView: root)
+        let controller = WidgetWindowController(settings: settings, service: service, rootView: root)
 
         self.settings = settings
         self.service = service

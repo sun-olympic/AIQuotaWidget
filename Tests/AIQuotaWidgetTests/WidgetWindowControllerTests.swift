@@ -252,4 +252,150 @@ final class WidgetWindowControllerTests: XCTestCase {
         await AntigravityCache.shared.clear()
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }
+
+    func testAutoCollapsePersistence() throws {
+        let suiteName = "test.AIQuotaWidget.AppSettings.AutoCollapse"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        var settings = AppSettings(defaults: defaults)
+        XCTAssertTrue(settings.autoCollapse) // Default should be true
+        XCTAssertFalse(settings.isCollapsed) // Default should be false
+        
+        settings.autoCollapse = false
+        
+        // Re-init settings to see if it retrieves from defaults
+        settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.autoCollapse)
+        
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
+    @MainActor
+    func testWindowAdaptiveHeightAndTopRightAnchoring() throws {
+        let suiteName = "test.AIQuotaWidget.WindowController.Adaptive"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        let settings = AppSettings(defaults: defaults)
+        settings.selectedTab = .cursor
+        settings.isCollapsed = false
+        
+        let service = QuotaService(settings: settings)
+        
+        let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
+        
+        // Let's check initial size (no service loaded yet, so height is 220)
+        XCTAssertEqual(controller.panel.frame.size.width, 320)
+        XCTAssertEqual(controller.panel.frame.size.height, 220)
+        
+        let initialTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
+        let initialTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
+        
+        // Test collapse state: 80x80
+        settings.isCollapsed = true
+        
+        let expectation1 = self.expectation(description: "Collapse complete")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            XCTAssertEqual(controller.panel.frame.size.width, 80)
+            XCTAssertEqual(controller.panel.frame.size.height, 80)
+            
+            let collapsedTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
+            let collapsedTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
+            XCTAssertEqual(initialTopRightX, collapsedTopRightX, accuracy: 0.001)
+            XCTAssertEqual(initialTopRightY, collapsedTopRightY, accuracy: 0.001)
+            
+            // Expand again
+            settings.isCollapsed = false
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                XCTAssertEqual(controller.panel.frame.size.width, 320)
+                XCTAssertEqual(controller.panel.frame.size.height, 220)
+                
+                let expandedTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
+                let expandedTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
+                XCTAssertEqual(initialTopRightX, expandedTopRightX, accuracy: 0.001)
+                XCTAssertEqual(initialTopRightY, expandedTopRightY, accuracy: 0.001)
+                
+                expectation1.fulfill()
+            }
+        }
+        
+        waitForExpectations(timeout: 2.0, handler: nil)
+        
+        // Clean up
+        service.stop()
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
+    @MainActor
+    func testWindowHeightAdaptsToServiceDataAndAnchorsTopRight() async throws {
+        let suiteName = "test.AIQuotaWidget.WindowController.AdaptiveHeight"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        let settings = AppSettings(defaults: defaults)
+        settings.selectedTab = .antigravity
+        settings.coarseModelGrouping = false
+        
+        // Cache 5 models
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", displayName: "Model 1", remainingFraction: 1.0, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m2", displayName: "Model 2", remainingFraction: 0.9, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m3", displayName: "Model 3", remainingFraction: 0.8, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m4", displayName: "Model 4", remainingFraction: 0.7, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m5", displayName: "Model 5", remainingFraction: 0.6, resetAt: nil, isExhausted: false)
+        ]
+        let rawData = AntigravityRawData(models: models, defaultModelId: "m1")
+        await AntigravityCache.shared.set(rawData)
+        
+        let service = QuotaService(settings: settings)
+        
+        let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
+        
+        let initialTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
+        let initialTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
+        
+        // Start service to trigger refresh
+        service.start()
+        
+        let expectation = self.expectation(description: "Data loaded and window resized")
+        var cancellables = Set<AnyCancellable>()
+        
+        service.$antigravityState
+            .sink { state in
+                if case .loaded(let snapshot) = state {
+                    if let windows = snapshot.secondaryWindows, windows.count == 4 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            XCTAssertEqual(controller.panel.frame.size.width, 320)
+                            XCTAssertEqual(controller.panel.frame.size.height, 295)
+                            
+                            let newTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
+                            let newTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
+                            
+                            XCTAssertEqual(initialTopRightX, newTopRightX, accuracy: 0.001)
+                            XCTAssertEqual(initialTopRightY, newTopRightY, accuracy: 0.001)
+                            expectation.fulfill()
+                        }
+                    }
+                }
+            }
+            .store(in: &cancellables)
+            
+        await fulfillment(of: [expectation], timeout: 2.0)
+        
+        // Clean up
+        service.stop()
+        await AntigravityCache.shared.clear()
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
 }

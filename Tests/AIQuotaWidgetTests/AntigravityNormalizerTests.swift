@@ -167,5 +167,13 @@ final class AntigravityNormalizerTests: XCTestCase {
         XCTAssertEqual(secondary2[0].name, "Gemini")
         XCTAssertEqual(secondary2[0].remainingPercent, 80)
     }
+
+    func testWaterBallViewSizeAndFontScaling() {
+        let view96 = WaterBallView(percent: 50, leftLabel: "Left", waveEnabled: true, color: .blue, size: 96)
+        XCTAssertEqual(view96.size, 96)
+        
+        let view64 = WaterBallView(percent: 80, leftLabel: "Left", waveEnabled: false, color: .green, size: 64)
+        XCTAssertEqual(view64.size, 64)
+    }
 }
 
