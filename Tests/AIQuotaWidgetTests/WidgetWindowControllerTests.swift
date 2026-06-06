@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import Combine
 @testable import AIQuotaWidget
 
 final class WidgetWindowControllerTests: XCTestCase {
@@ -80,6 +81,93 @@ final class WidgetWindowControllerTests: XCTestCase {
         XCTAssertEqual(settings.selectedTab, .antigravity)
         
         // Clean up
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
+    func testAntigravityDefaultModelIdPersistence() throws {
+        let suiteName = "test.AIQuotaWidget.AppSettings.ModelId"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        var settings = AppSettings(defaults: defaults)
+        XCTAssertNil(settings.antigravityDefaultModelId)
+        
+        settings.antigravityDefaultModelId = "google/gemini-flash"
+        
+        // Re-init settings to see if it retrieves from defaults
+        settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.antigravityDefaultModelId, "google/gemini-flash")
+        
+        // Test clear
+        settings.antigravityDefaultModelId = nil
+        settings = AppSettings(defaults: defaults)
+        XCTAssertNil(settings.antigravityDefaultModelId)
+        
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
+    @MainActor
+    func testQuotaServiceReactsToModelIdChange() async throws {
+        let suiteName = "test.AIQuotaWidget.QuotaService.ModelId"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+        
+        let settings = AppSettings(defaults: defaults)
+        settings.selectedTab = .antigravity
+        
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", displayName: "Model A", remainingFraction: 0.7, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m2", displayName: "Model B", remainingFraction: 0.4, resetAt: nil, isExhausted: false)
+        ]
+        let rawData = AntigravityRawData(models: models, defaultModelId: "m1")
+        await AntigravityCache.shared.set(rawData)
+        
+        let service = QuotaService(settings: settings)
+        
+        // Trigger initial refresh
+        service.start()
+        
+        // Wait for state to load
+        let expectation = self.expectation(description: "First load")
+        var cancellables = Set<AnyCancellable>()
+        service.$antigravityState
+            .sink { state in
+                if case .loaded(let snapshot) = state {
+                    if snapshot.activeAntigravityModelId == "m1" {
+                        expectation.fulfill()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+        
+        await fulfillment(of: [expectation], timeout: 1.0)
+        cancellables.removeAll()
+        
+        // Now, change antigravityDefaultModelId to "m2"
+        let expectation2 = self.expectation(description: "Second load after model override change")
+        service.$antigravityState
+            .sink { state in
+                if case .loaded(let snapshot) = state {
+                    if snapshot.activeAntigravityModelId == "m2" {
+                        expectation2.fulfill()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+        
+        settings.antigravityDefaultModelId = "m2"
+        
+        await fulfillment(of: [expectation2], timeout: 1.0)
+        
+        // Clean up
+        service.stop()
+        await AntigravityCache.shared.clear()
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }
 }

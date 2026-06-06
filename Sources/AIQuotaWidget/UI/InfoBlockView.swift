@@ -29,11 +29,40 @@ struct InfoBlockView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(snapshot.primaryText)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            if settings.selectedTab == .antigravity, let models = snapshot.antigravityModels, !models.isEmpty {
+                Menu {
+                    ForEach(models) { model in
+                        Button(action: {
+                            settings.antigravityDefaultModelId = model.id
+                        }) {
+                            HStack {
+                                Text(model.name)
+                                if model.id == snapshot.activeAntigravityModelId {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(snapshot.primaryText)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                }
+                .menuStyle(.borderlessButton)
+            } else {
+                Text(snapshot.primaryText)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
 
             HStack(spacing: 4) {
                 Image(systemName: "clock")

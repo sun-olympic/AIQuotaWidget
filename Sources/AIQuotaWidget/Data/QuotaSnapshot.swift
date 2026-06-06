@@ -54,6 +54,12 @@ struct OnDemandUsage: Equatable {
     }
 }
 
+/// Antigravity 可选模型信息，供 UI 的切换菜单渲染。
+struct AntigravityModelInfo: Equatable, Identifiable {
+    let id: String
+    let name: String
+}
+
 /// 供 UI 消费的统一额度快照。两种计费模型的原始返回都会被归一化为此结构。
 struct QuotaSnapshot: Equatable {
     /// 剩余百分比，范围 0–100（主维度）。
@@ -72,6 +78,10 @@ struct QuotaSnapshot: Equatable {
     var onDemand: OnDemandUsage?
     /// 次级窗口/模型分组（Codex 7d、Antigravity 其余模型）；无则为 nil。
     var secondaryWindows: [QuotaWindow]? = nil
+    /// 可用于切换的 Antigravity 模型列表（仅在 Antigravity 来源下有值）。
+    var antigravityModels: [AntigravityModelInfo]? = nil
+    /// 当前激活的 Antigravity 模型 ID。
+    var activeAntigravityModelId: String? = nil
 
     var ledStatus: LEDStatus {
         LEDStatus.from(remainingPercent: remainingPercent)

@@ -1,19 +1,28 @@
 import Foundation
 
+struct AntigravityRawData: Equatable {
+    let models: [AntigravityNormalizer.Model]
+    let defaultModelId: String?
+}
+
 /// 轻量缓存，避免频繁拉取（5 分钟，TTL 见 AntigravityConfig.cacheTTL）。
 actor AntigravityCache {
     static let shared = AntigravityCache()
-    private var entry: (timestamp: Date, snapshot: QuotaSnapshot)?
+    private var entry: (timestamp: Date, data: AntigravityRawData)?
 
-    func get() -> QuotaSnapshot? {
+    func get() -> AntigravityRawData? {
         guard let entry = entry, Date().timeIntervalSince(entry.timestamp) < AntigravityConfig.cacheTTL else {
             return nil
         }
-        return entry.snapshot
+        return entry.data
     }
 
-    func set(_ snapshot: QuotaSnapshot) {
-        entry = (Date(), snapshot)
+    func set(_ data: AntigravityRawData) {
+        entry = (Date(), data)
+    }
+
+    func clear() {
+        entry = nil
     }
 }
 
@@ -21,22 +30,36 @@ actor AntigravityCache {
 /// 调 `GetAvailableModels`（内部已认证并缓存代理云端 FetchAvailableModels），解析各模型额度。
 struct AntigravityProvider: QuotaProvider {
     let productName = "Antigravity"
+    let defaultModelOverride: String?
+
+    init(defaultModelOverride: String? = nil) {
+        self.defaultModelOverride = defaultModelOverride
+    }
 
     func fetch() async throws -> QuotaSnapshot {
         if let cached = await AntigravityCache.shared.get() {
-            return cached
+            let activeDefaultId = defaultModelOverride ?? cached.defaultModelId
+            if let snapshot = AntigravityNormalizer.make(models: cached.models, defaultModelId: activeDefaultId) {
+                return snapshot
+            }
         }
 
         // 本地优先：连得上则不发任何外部网络请求。
-        if let snapshot = try? await fetchViaLocalServer() {
-            await AntigravityCache.shared.set(snapshot)
-            return snapshot
+        if let raw = try? await fetchViaLocalServer() {
+            await AntigravityCache.shared.set(raw)
+            let activeDefaultId = defaultModelOverride ?? raw.defaultModelId
+            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId) {
+                return snapshot
+            }
         }
 
         // 云模式回退（当前缺 Antigravity 专属 OAuth client，多数情况下不可用）。
-        if let snapshot = try await fetchViaCloud() {
-            await AntigravityCache.shared.set(snapshot)
-            return snapshot
+        if let raw = try await fetchViaCloud() {
+            await AntigravityCache.shared.set(raw)
+            let activeDefaultId = defaultModelOverride ?? raw.defaultModelId
+            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId) {
+                return snapshot
+            }
         }
 
         // 本地连不上且无有效云端凭证 → 未登录/未就绪引导态。
@@ -45,7 +68,7 @@ struct AntigravityProvider: QuotaProvider {
 
     // MARK: - 本地模式
 
-    private func fetchViaLocalServer() async throws -> QuotaSnapshot? {
+    private func fetchViaLocalServer() async throws -> AntigravityRawData? {
         guard let server = AntigravityLocalServer.discover() else { return nil }
 
         let session = LocalhostInsecureSession.make(timeout: AntigravityConfig.requestTimeout)
@@ -65,8 +88,8 @@ struct AntigravityProvider: QuotaProvider {
                   let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 continue
             }
-            if let snapshot = Self.normalize(data) {
-                return snapshot
+            if let raw = Self.parseRawData(data) {
+                return raw
             }
         }
         return nil
@@ -74,7 +97,7 @@ struct AntigravityProvider: QuotaProvider {
 
     // MARK: - 云模式（回退）
 
-    private func fetchViaCloud() async throws -> QuotaSnapshot? {
+    private func fetchViaCloud() async throws -> AntigravityRawData? {
         guard let creds = AntigravityCredentials.load(),
               !AntigravityConfig.oauthClientID.isEmpty,
               let accessToken = try await refreshAccessToken(refreshToken: creds.refreshToken) else {
@@ -92,7 +115,7 @@ struct AntigravityProvider: QuotaProvider {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             return nil
         }
-        return Self.normalize(data)
+        return Self.parseRawData(data)
     }
 
     private func refreshAccessToken(refreshToken: String) async throws -> String? {
@@ -117,7 +140,7 @@ struct AntigravityProvider: QuotaProvider {
 
     /// 解析 GetAvailableModels / fetchAvailableModels 响应：
     /// `[response.]models.<id>.quotaInfo`（remainingFraction/resetTime/isExhausted）+ `defaultAgentModelId`。
-    static func normalize(_ data: Data) -> QuotaSnapshot? {
+    static func parseRawData(_ data: Data) -> AntigravityRawData? {
         guard let outer = JSONDigger(data) else { return nil }
         // 本地 Connect 响应外层包了一层 "response"；云端直接是顶层。
         let root = outer.dict("response") ?? outer
@@ -140,7 +163,7 @@ struct AntigravityProvider: QuotaProvider {
         guard !models.isEmpty else { return nil }
 
         let defaultId = root.string("defaultAgentModelId")
-        return AntigravityNormalizer.make(models: models, defaultModelId: defaultId)
+        return AntigravityRawData(models: models, defaultModelId: defaultId)
     }
 }
 

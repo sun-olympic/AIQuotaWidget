@@ -61,5 +61,71 @@ final class AntigravityNormalizerTests: XCTestCase {
         XCTAssertEqual(secondary[1].name, "Claude Sonnet 4.6 (Thinking)")
         XCTAssertEqual(secondary[1].remainingPercent, 90, accuracy: 0.001)
     }
+
+    func testDefaultModelOverrideAndDeduplication() throws {
+        // Test that deduplication prioritizes keeping the defaultModelId entry
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", displayName: "Duplicate Name", remainingFraction: 0.8, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m2", displayName: "Duplicate Name", remainingFraction: 0.3, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m3", displayName: "Unique Name", remainingFraction: 0.9, resetAt: nil, isExhausted: false)
+        ]
+
+        // 1. With defaultModelId = "m1" -> should prioritize keeping m1 (80%) over m2 (30%)
+        let snapshot1 = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "m1"))
+        XCTAssertEqual(snapshot1.activeAntigravityModelId, "m1")
+        XCTAssertEqual(snapshot1.remainingPercent, 80)
+        let secondary1 = try XCTUnwrap(snapshot1.secondaryWindows)
+        XCTAssertEqual(secondary1.count, 1)
+        XCTAssertEqual(secondary1[0].name, "Unique Name")
+        XCTAssertEqual(secondary1[0].remainingPercent, 90)
+
+        // 2. With defaultModelId = "m2" -> should prioritize keeping m2 (30%) over m1 (80%)
+        let snapshot2 = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "m2"))
+        XCTAssertEqual(snapshot2.activeAntigravityModelId, "m2")
+        XCTAssertEqual(snapshot2.remainingPercent, 30)
+        let secondary2 = try XCTUnwrap(snapshot2.secondaryWindows)
+        XCTAssertEqual(secondary2.count, 1)
+        XCTAssertEqual(secondary2[0].name, "Unique Name")
+        XCTAssertEqual(secondary2[0].remainingPercent, 90)
+    }
+
+    func testAlphabeticalSortingOfSwitcherModels() throws {
+        let models = [
+            AntigravityNormalizer.Model(id: "c", displayName: "C Model", remainingFraction: 0.8, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "a", displayName: "A Model", remainingFraction: 0.9, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "b", displayName: "B Model", remainingFraction: 1.0, resetAt: nil, isExhausted: false)
+        ]
+        let snapshot = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "b"))
+        let switcherModels = try XCTUnwrap(snapshot.antigravityModels)
+        XCTAssertEqual(switcherModels.count, 3)
+        XCTAssertEqual(switcherModels[0].name, "A Model")
+        XCTAssertEqual(switcherModels[1].name, "B Model")
+        XCTAssertEqual(switcherModels[2].name, "C Model")
+        XCTAssertEqual(snapshot.activeAntigravityModelId, "b")
+    }
+
+    func testProviderFetchWithCacheAndOverride() async throws {
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", displayName: "Model A", remainingFraction: 0.7, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m2", displayName: "Model B", remainingFraction: 0.4, resetAt: nil, isExhausted: false)
+        ]
+        let rawData = AntigravityRawData(models: models, defaultModelId: "m1")
+        await AntigravityCache.shared.set(rawData)
+        
+        // Fetch with no override (should use defaultModelId "m1")
+        let provider1 = AntigravityProvider()
+        let snapshot1 = try await provider1.fetch()
+        XCTAssertEqual(snapshot1.activeAntigravityModelId, "m1")
+        XCTAssertEqual(snapshot1.remainingPercent, 70, accuracy: 0.001)
+        
+        // Fetch with override "m2"
+        let provider2 = AntigravityProvider(defaultModelOverride: "m2")
+        let snapshot2 = try await provider2.fetch()
+        XCTAssertEqual(snapshot2.activeAntigravityModelId, "m2")
+        XCTAssertEqual(snapshot2.remainingPercent, 40, accuracy: 0.001)
+        
+        // Clean cache
+        await AntigravityCache.shared.clear()
+    }
 }
 

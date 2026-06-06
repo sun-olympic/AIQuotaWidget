@@ -48,6 +48,13 @@ final class QuotaService: ObservableObject {
                 self?.rescheduleTimer()
             }
             .store(in: &cancellables)
+
+        settings.$antigravityDefaultModelId
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.refresh(.antigravity)
+            }
+            .store(in: &cancellables)
     }
 
     /// 用户主动点击 Tab：永久禁用自动默认选择，并切换。
@@ -143,7 +150,7 @@ final class QuotaService: ObservableObject {
             case .codex:
                 snapshot = try await CodexProvider().fetch()
             case .antigravity:
-                snapshot = try await AntigravityProvider().fetch()
+                snapshot = try await AntigravityProvider(defaultModelOverride: settings.antigravityDefaultModelId).fetch()
             }
             setState(.loaded(snapshot), for: tab)
         } catch QuotaError.needsReLogin {

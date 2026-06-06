@@ -13,6 +13,7 @@ final class AppSettings: ObservableObject {
         static let windowFrame = "settings.windowFrame"
         static let selectedTab = "settings.selectedTab"
         static let enabledTabs = "settings.enabledTabs"
+        static let antigravityDefaultModelId = "settings.antigravityDefaultModelId"
     }
 
     private let defaults: UserDefaults
@@ -47,6 +48,16 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var antigravityDefaultModelId: String? {
+        didSet {
+            if let id = antigravityDefaultModelId {
+                defaults.set(id, forKey: Key.antigravityDefaultModelId)
+            } else {
+                defaults.removeObject(forKey: Key.antigravityDefaultModelId)
+            }
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -78,6 +89,8 @@ final class AppSettings: ObservableObject {
         } else {
             self.selectedTab = enabled.first ?? .cursor
         }
+
+        self.antigravityDefaultModelId = defaults.string(forKey: Key.antigravityDefaultModelId)
     }
 
     func ensureSelectedTabValid() {
