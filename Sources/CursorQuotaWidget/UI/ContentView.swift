@@ -16,7 +16,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .padding(14)
-        .frame(width: 320, height: 220)
+        .frame(width: 320, height: settings.selectedTab == .antigravity ? 320 : 220)
         .background(VisualEffectView(material: .hudWindow))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -134,7 +134,11 @@ struct ContentView: View {
                 Spacer(minLength: 0)
             }
             if let windows = snapshot.secondaryWindows, !windows.isEmpty {
-                SecondaryWindowsView(windows: windows, settings: settings)
+                SecondaryWindowsView(
+                    windows: windows,
+                    settings: settings,
+                    maxHeight: settings.selectedTab == .antigravity ? 120 : 56
+                )
             }
         }
     }

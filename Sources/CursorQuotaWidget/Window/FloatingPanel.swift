@@ -28,4 +28,22 @@ final class FloatingPanel: NSPanel {
     // 允许成为 key 窗口以便操作控件，但不会激活 App（nonactivatingPanel）。
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    override func setFrame(_ frameRect: NSRect, display displayFlag: Bool) {
+        var rect = frameRect
+        if frame.size.height > 0 && abs(rect.size.height - frame.size.height) > 0.001 {
+            let diff = rect.size.height - frame.size.height
+            rect.origin.y = frame.origin.y - diff
+        }
+        super.setFrame(rect, display: displayFlag)
+    }
+
+    override func setFrame(_ frameRect: NSRect, display displayFlag: Bool, animate animateFlag: Bool) {
+        var rect = frameRect
+        if frame.size.height > 0 && abs(rect.size.height - frame.size.height) > 0.001 {
+            let diff = rect.size.height - frame.size.height
+            rect.origin.y = frame.origin.y - diff
+        }
+        super.setFrame(rect, display: displayFlag, animate: animateFlag)
+    }
 }

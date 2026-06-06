@@ -23,18 +23,29 @@ enum AntigravityNormalizer {
         let remaining = QuotaNormalizer.clamp(main.remainingFraction * 100)
         let primaryText = "\(main.name) · \(Int(remaining.rounded()))%"
 
-        let others = models
-            .filter { $0.id != main.id }
-            .map {
-                QuotaWindow(
-                    name: $0.name,
-                    remainingPercent: QuotaNormalizer.clamp($0.remainingFraction * 100),
-                    resetAt: $0.resetAt,
-                    isExhausted: $0.isExhausted
-                )
+        var uniqueOthers: [String: QuotaWindow] = [:]
+        for model in models.filter({ $0.id != main.id }) {
+            let window = QuotaWindow(
+                name: model.name,
+                remainingPercent: QuotaNormalizer.clamp(model.remainingFraction * 100),
+                resetAt: model.resetAt,
+                isExhausted: model.isExhausted
+            )
+            if let existing = uniqueOthers[window.name] {
+                if window.remainingPercent < existing.remainingPercent {
+                    uniqueOthers[window.name] = window
+                }
+            } else {
+                uniqueOthers[window.name] = window
             }
-            // 剩余少/已耗尽的排前面，便于一眼看到吃紧的模型。
-            .sorted { $0.remainingPercent < $1.remainingPercent }
+        }
+
+        let sortedOthers = uniqueOthers.values.sorted {
+            if abs($0.remainingPercent - $1.remainingPercent) < 0.001 {
+                return $0.name < $1.name
+            }
+            return $0.remainingPercent < $1.remainingPercent
+        }
 
         return QuotaSnapshot(
             remainingPercent: remaining,
@@ -44,7 +55,7 @@ enum AntigravityNormalizer {
             planName: nil,
             mode: .unknown,
             onDemand: nil,
-            secondaryWindows: others.isEmpty ? nil : others
+            secondaryWindows: sortedOthers.isEmpty ? nil : sortedOthers
         )
     }
 

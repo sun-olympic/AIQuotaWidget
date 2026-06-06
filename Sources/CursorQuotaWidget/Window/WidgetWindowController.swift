@@ -6,7 +6,7 @@ import Combine
 @MainActor
 final class WidgetWindowController: NSObject, NSWindowDelegate {
 
-    private let panel: FloatingPanel
+    let panel: FloatingPanel
     private let settings: AppSettings
     private var cancellables = Set<AnyCancellable>()
 
@@ -17,13 +17,16 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
 
         let origin = settings.savedWindowOrigin()
             ?? CGPoint(x: 200, y: 400)
-        let rect = NSRect(origin: origin, size: Self.defaultSize)
+        let initialHeight: CGFloat = (settings.selectedTab == .antigravity) ? 320 : 220
+        let initialSize = NSSize(width: 320, height: initialHeight)
+        let rect = NSRect(origin: origin, size: initialSize)
         self.panel = FloatingPanel(contentRect: rect)
 
         super.init()
 
         let hosting = NSHostingView(rootView: rootView)
-        hosting.frame = NSRect(origin: .zero, size: Self.defaultSize)
+        hosting.autoresizingMask = [.width, .height]
+        hosting.frame = NSRect(origin: .zero, size: initialSize)
         panel.contentView = hosting
         panel.delegate = self
 
@@ -33,6 +36,15 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         settings.$pinnedOnTop
             .sink { [weak self] pinned in self?.applyPinState(pinned) }
             .store(in: &cancellables)
+
+        // Tab 变化时自动调整窗口高度
+        settings.$selectedTab
+            .sink { [weak self] tab in
+                DispatchQueue.main.async {
+                    self?.updateWindowHeight(for: tab)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     func show() {
@@ -41,6 +53,17 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
 
     private func applyPinState(_ pinned: Bool) {
         panel.level = pinned ? .floating : .normal
+    }
+
+    private func updateWindowHeight(for tab: ProductTab) {
+        let targetHeight: CGFloat = (tab == .antigravity) ? 320 : 220
+        var frame = panel.frame
+        let diff = targetHeight - frame.size.height
+        if abs(diff) > 0.001 {
+            frame.origin.y -= diff // 保持顶部不变，向下延展
+            frame.size.height = targetHeight
+            panel.setFrame(frame, display: true, animate: true)
+        }
     }
 
     // MARK: - NSWindowDelegate

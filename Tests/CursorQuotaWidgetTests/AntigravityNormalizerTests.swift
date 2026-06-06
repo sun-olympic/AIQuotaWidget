@@ -39,4 +39,47 @@ final class AntigravityNormalizerTests: XCTestCase {
     func testEmptyModelsReturnsNil() {
         XCTAssertNil(AntigravityNormalizer.make(models: [], defaultModelId: nil))
     }
+
+    func testDumpRealModels() throws {
+        let url = URL(fileURLWithPath: "/Users/sunqilei/Documents/GitHub/Personal/CursorQuotaWidget/models.json")
+        let data = try Data(contentsOf: url)
+        if let snapshot = AntigravityProvider.normalize(data) {
+            print("--- SNAPSHOT ---")
+            print("Remaining percent: \(snapshot.remainingPercent)")
+            print("Primary text: \(snapshot.primaryText)")
+            if let windows = snapshot.secondaryWindows {
+                print("Secondary windows count: \(windows.count)")
+                for w in windows {
+                    print("  - \(w.name): \(w.remainingPercent)% (resetAt: \(String(describing: w.resetAt)))")
+                }
+            } else {
+                print("No secondary windows")
+            }
+        } else {
+            print("Failed to normalize models.json")
+        }
+    }
+    func testDeduplicationAndSorting() throws {
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", displayName: "Gemini 3.1 Flash Lite", remainingFraction: 0.8, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m2", displayName: "Gemini 3.1 Flash Lite", remainingFraction: 0.5, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m3", displayName: "Claude Sonnet 4.6 (Thinking)", remainingFraction: 0.9, resetAt: nil, isExhausted: false),
+            AntigravityNormalizer.Model(id: "m4", displayName: "Gemini 3.5 Flash (Medium)", remainingFraction: 1.0, resetAt: nil, isExhausted: false),
+        ]
+        
+        let snapshot = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "m4"))
+        
+        XCTAssertEqual(snapshot.remainingPercent, 100)
+        XCTAssertEqual(snapshot.primaryText, "Gemini 3.5 Flash (Medium) · 100%")
+        
+        let secondary = try XCTUnwrap(snapshot.secondaryWindows)
+        XCTAssertEqual(secondary.count, 2)
+        
+        XCTAssertEqual(secondary[0].name, "Gemini 3.1 Flash Lite")
+        XCTAssertEqual(secondary[0].remainingPercent, 50, accuracy: 0.001)
+        
+        XCTAssertEqual(secondary[1].name, "Claude Sonnet 4.6 (Thinking)")
+        XCTAssertEqual(secondary[1].remainingPercent, 90, accuracy: 0.001)
+    }
 }
+

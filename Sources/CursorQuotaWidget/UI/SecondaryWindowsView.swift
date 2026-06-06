@@ -5,6 +5,7 @@ import SwiftUI
 struct SecondaryWindowsView: View {
     let windows: [QuotaWindow]
     @ObservedObject var settings: AppSettings
+    var maxHeight: CGFloat = 56
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -14,7 +15,7 @@ struct SecondaryWindowsView: View {
                 }
             }
         }
-        .frame(maxHeight: 56)
+        .frame(maxHeight: maxHeight)
     }
 
     private func windowBar(_ window: QuotaWindow) -> some View {
