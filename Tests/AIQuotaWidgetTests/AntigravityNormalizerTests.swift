@@ -174,6 +174,12 @@ final class AntigravityNormalizerTests: XCTestCase {
         
         let view64 = WaterBallView(percent: 80, leftLabel: "Left", waveEnabled: false, color: .green, size: 64)
         XCTAssertEqual(view64.size, 64)
+
+        // Instantiate for all themes
+        for theme in WidgetTheme.allCases {
+            let view = WaterBallView(percent: 50, leftLabel: "Left", waveEnabled: true, color: .blue, size: 96, theme: theme)
+            XCTAssertEqual(view.theme, theme)
+        }
     }
 }
 

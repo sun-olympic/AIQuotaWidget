@@ -41,9 +41,23 @@ struct WaterBallView: View {
             label
         }
         .overlay(
-            Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5)
+            borderOverlay
         )
         .frame(width: size, height: size)
+    }
+
+    @ViewBuilder
+    private var borderOverlay: some View {
+        switch theme {
+        case .capybara:
+            RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5)
+                .frame(width: size * 0.8, height: size * 0.7)
+                .offset(y: size * 0.08)
+        default:
+            Circle()
+                .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5)
+        }
     }
 
     private var label: some View {
@@ -56,21 +70,37 @@ struct WaterBallView: View {
                 .foregroundStyle(.white.opacity(0.85))
         }
         .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
+        .offset(y: theme == .capybara ? size * 0.08 : 0)
     }
 
     private func waterCanvas(phase: Double, animated: Bool) -> some View {
         Canvas { context, size in
-            let circle = Path(ellipseIn: CGRect(origin: .zero, size: size))
-            context.clip(to: circle)
+            let clipPath: Path
+            let containerHeight: CGFloat
+            let containerYStart: CGFloat
+            
+            switch theme {
+            case .capybara:
+                let rect = CGRect(x: size.width * 0.1, y: size.height * 0.23, width: size.width * 0.8, height: size.height * 0.7)
+                clipPath = Path(roundedRect: rect, cornerSize: CGSize(width: size.width * 0.2, height: size.width * 0.2))
+                containerHeight = size.height * 0.7
+                containerYStart = size.height * 0.23
+            default:
+                clipPath = Path(ellipseIn: CGRect(origin: .zero, size: size))
+                containerHeight = size.height
+                containerYStart = 0
+            }
+            
+            context.clip(to: clipPath)
 
             // 球体底色（仅经典水球才填充底色）。
             if theme == .waterBall {
-                context.fill(circle, with: .color(color.opacity(0.15)))
+                context.fill(clipPath, with: .color(color.opacity(0.15)))
             }
 
             let clamped = min(100, max(0, percent))
-            let level = (1 - clamped / 100) * size.height
-            let amplitude = animated ? max(2.0, size.height * 0.035) : 0
+            let level = containerYStart + (1 - clamped / 100) * containerHeight
+            let amplitude = animated ? max(2.0, containerHeight * 0.035) : 0
 
             // 两层正弦波叠加，如果是角色主题则微调透明度以保留背景清晰度。
             let op1 = theme == .waterBall ? 0.35 : 0.28
@@ -130,27 +160,40 @@ struct ThemeBackgroundView: View {
             let w = geo.size.width
             let h = geo.size.height
             ZStack {
-                Circle().fill(Color(red: 0.95, green: 0.9, blue: 0.8))
-                
-                // 头部/身体轮廓
-                RoundedRectangle(cornerRadius: w * 0.25)
+                // 左耳
+                Capsule()
                     .fill(Color(red: 0.62, green: 0.45, blue: 0.35))
-                    .frame(width: w * 0.7, height: h * 0.6)
+                    .frame(width: w * 0.12, height: h * 0.16)
+                    .rotationEffect(.degrees(-15))
+                    .offset(x: -w * 0.34, y: -h * 0.23)
+                
+                // 右耳
+                Capsule()
+                    .fill(Color(red: 0.62, green: 0.45, blue: 0.35))
+                    .frame(width: w * 0.12, height: h * 0.16)
+                    .rotationEffect(.degrees(15))
+                    .offset(x: w * 0.34, y: -h * 0.23)
+
+                // 头部/身体轮廓
+                RoundedRectangle(cornerRadius: w * 0.2, style: .continuous)
+                    .fill(Color(red: 0.62, green: 0.45, blue: 0.35))
+                    .frame(width: w * 0.8, height: h * 0.7)
+                    .offset(y: h * 0.08)
                 
                 // 鼻子/嘴部区域
                 Capsule()
                     .fill(Color(red: 0.45, green: 0.3, blue: 0.22))
-                    .frame(width: w * 0.3, height: h * 0.25)
-                    .offset(y: h * 0.1)
+                    .frame(width: w * 0.34, height: h * 0.26)
+                    .offset(y: h * 0.18)
                 
                 // 黑色鼻尖
                 Capsule()
                     .fill(Color.black)
-                    .frame(width: w * 0.12, height: h * 0.08)
-                    .offset(y: h * 0.02)
+                    .frame(width: w * 0.13, height: h * 0.08)
+                    .offset(y: h * 0.10)
                 
                 // 眯眯眼
-                HStack(spacing: w * 0.25) {
+                HStack(spacing: w * 0.34) {
                     Path { path in
                         path.addArc(center: CGPoint(x: w * 0.05, y: h * 0.05),
                                     radius: w * 0.04,
@@ -171,21 +214,21 @@ struct ThemeBackgroundView: View {
                     .stroke(Color.black, lineWidth: w * 0.03)
                     .frame(width: w * 0.1, height: h * 0.1)
                 }
-                .offset(y: -h * 0.08)
+                .offset(y: -h * 0.02)
                 
                 // 腮红
-                HStack(spacing: w * 0.45) {
-                    Circle().fill(Color.red.opacity(0.3)).frame(width: w * 0.08, height: w * 0.08)
-                    Circle().fill(Color.red.opacity(0.3)).frame(width: w * 0.08, height: w * 0.08)
+                HStack(spacing: w * 0.52) {
+                    Circle().fill(Color.red.opacity(0.35)).frame(width: w * 0.08, height: w * 0.08)
+                    Circle().fill(Color.red.opacity(0.35)).frame(width: w * 0.08, height: w * 0.08)
                 }
-                .offset(y: h * 0.05)
+                .offset(y: h * 0.1)
                 
                 // 经典头顶小橘子
                 ZStack {
-                    Circle().fill(Color.orange).frame(width: w * 0.18, height: w * 0.18)
-                    Capsule().fill(Color.green).frame(width: w * 0.05, height: w * 0.09)
+                    Circle().fill(Color.orange).frame(width: w * 0.2, height: w * 0.2)
+                    Capsule().fill(Color.green).frame(width: w * 0.05, height: w * 0.1)
                         .rotationEffect(.degrees(45))
-                        .offset(x: w * 0.04, y: -h * 0.06)
+                        .offset(x: w * 0.05, y: -h * 0.08)
                 }
                 .offset(y: -h * 0.32)
             }
