@@ -190,5 +190,13 @@ final class AntigravityNormalizerTests: XCTestCase {
             XCTAssertEqual(view.theme, theme)
         }
     }
+
+    func testPlanNamePropagation() throws {
+        let models = [
+            AntigravityNormalizer.Model(id: "google/gemini-pro", remainingFraction: 0.6, resetAt: nil, isExhausted: false)
+        ]
+        let snapshot = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "google/gemini-pro", planName: "PRO"))
+        XCTAssertEqual(snapshot.planName, "PRO")
+    }
 }
 

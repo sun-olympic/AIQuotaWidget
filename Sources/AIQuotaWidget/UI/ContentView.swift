@@ -23,12 +23,12 @@ struct ContentView: View {
         .frame(width: settings.isCollapsed ? 80 : 320,
                height: settings.isCollapsed ? 80 : currentExpandedHeight)
         .background(VisualEffectView(material: .hudWindow))
-        .clipShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
+        .clipShape(WidgetClipShape(isCollapsed: settings.isCollapsed, theme: settings.widgetTheme, cornerRadius: currentCornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous)
-                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+            WidgetClipShape(isCollapsed: settings.isCollapsed, theme: settings.widgetTheme, cornerRadius: currentCornerRadius)
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: currentCornerRadius, style: .continuous))
+        .contentShape(WidgetClipShape(isCollapsed: settings.isCollapsed, theme: settings.widgetTheme, cornerRadius: currentCornerRadius))
         .onHover { hovering in
             isHovering = hovering
             handleHover(hovering)
@@ -406,6 +406,26 @@ struct ContentView: View {
         } else {
             guard !showSettings else { return }
             triggerCollapseTask()
+        }
+    }
+}
+
+/// 统一的窗口剪影裁剪形状，支持折叠态下的全身卡通主题外廓。
+struct WidgetClipShape: Shape {
+    let isCollapsed: Bool
+    let theme: WidgetTheme
+    let cornerRadius: CGFloat
+    
+    func path(in rect: CGRect) -> Path {
+        if isCollapsed {
+            // 折叠状态下，悬浮球大小为 64x64，居中放置在 80x80 的窗口中
+            // 边缘留白为 (80 - 64) / 2 = 8
+            let ballRect = CGRect(x: 8, y: 8, width: 64, height: 64)
+            return WaterBallView.silhouettePath(for: theme, in: ballRect)
+        } else {
+            var path = Path()
+            path.addPath(Path(roundedRect: rect, cornerRadius: cornerRadius))
+            return path
         }
     }
 }

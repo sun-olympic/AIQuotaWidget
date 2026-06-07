@@ -3,6 +3,7 @@ import Foundation
 struct AntigravityRawData: Equatable {
     let models: [AntigravityNormalizer.Model]
     let defaultModelId: String?
+    var planName: String? = nil
 }
 
 /// 轻量缓存，避免频繁拉取（5 分钟，TTL 见 AntigravityConfig.cacheTTL）。
@@ -41,7 +42,7 @@ struct AntigravityProvider: QuotaProvider {
     func fetch() async throws -> QuotaSnapshot {
         if let cached = await AntigravityCache.shared.get() {
             let activeDefaultId = defaultModelOverride ?? cached.defaultModelId
-            if let snapshot = AntigravityNormalizer.make(models: cached.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping) {
+            if let snapshot = AntigravityNormalizer.make(models: cached.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping, planName: cached.planName) {
                 return snapshot
             }
         }
@@ -50,7 +51,7 @@ struct AntigravityProvider: QuotaProvider {
         if let raw = try? await fetchViaLocalServer() {
             await AntigravityCache.shared.set(raw)
             let activeDefaultId = defaultModelOverride ?? raw.defaultModelId
-            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping) {
+            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping, planName: raw.planName) {
                 return snapshot
             }
         }
@@ -59,7 +60,7 @@ struct AntigravityProvider: QuotaProvider {
         if let raw = try await fetchViaCloud() {
             await AntigravityCache.shared.set(raw)
             let activeDefaultId = defaultModelOverride ?? raw.defaultModelId
-            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping) {
+            if let snapshot = AntigravityNormalizer.make(models: raw.models, defaultModelId: activeDefaultId, coarseGrouping: coarseModelGrouping, planName: raw.planName) {
                 return snapshot
             }
         }
@@ -165,7 +166,28 @@ struct AntigravityProvider: QuotaProvider {
         guard !models.isEmpty else { return nil }
 
         let defaultId = root.string("defaultAgentModelId")
-        return AntigravityRawData(models: models, defaultModelId: defaultId)
+        let rawPlan = root.string("planName")
+            ?? root.dict("userState")?.string("tier")
+            ?? root.dict("userState")?.string("userTier")
+            ?? root.dict("userState")?.string("planName")
+            ?? root.string("tier")
+        
+        var normalizedPlan: String? = nil
+        if let p = rawPlan, !p.isEmpty {
+            if p.lowercased() == "pro" {
+                normalizedPlan = "PRO"
+            } else if p.lowercased() == "individual" {
+                normalizedPlan = "Individual"
+            } else if p.lowercased() == "teams" {
+                normalizedPlan = "Teams"
+            } else if p.lowercased() == "enterprise" {
+                normalizedPlan = "Enterprise"
+            } else {
+                normalizedPlan = p.prefix(1).uppercased() + p.dropFirst()
+            }
+        }
+
+        return AntigravityRawData(models: models, defaultModelId: defaultId, planName: normalizedPlan)
     }
 }
 

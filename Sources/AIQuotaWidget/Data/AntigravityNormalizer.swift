@@ -22,7 +22,7 @@ enum AntigravityNormalizer {
         return .green
     }
 
-    static func make(models: [Model], defaultModelId: String?, coarseGrouping: Bool = false) -> QuotaSnapshot? {
+    static func make(models: [Model], defaultModelId: String?, coarseGrouping: Bool = false, planName: String? = nil) -> QuotaSnapshot? {
         guard !models.isEmpty else { return nil }
 
         var processedModels = models
@@ -111,7 +111,7 @@ enum AntigravityNormalizer {
             primaryText: primaryText,
             secondaryText: nil,
             resetAt: main.resetAt,
-            planName: nil,
+            planName: planName,
             mode: .unknown,
             onDemand: nil,
             secondaryWindows: sortedOthers.isEmpty ? nil : sortedOthers,
