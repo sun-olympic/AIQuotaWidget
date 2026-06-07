@@ -4,6 +4,8 @@
 <dict>
     <key>CFBundleName</key>
     <string>AIQuotaWidget</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleDisplayName</key>
     <string>AI Quota</string>
     <key>CFBundleIdentifier</key>

@@ -30,3 +30,11 @@ jobs:
         with:
           files: AIQuotaWidget.zip
           generate_release_notes: true
+          body: |
+            ### Usage Instructions / 使用说明
+            If macOS blocks the app from running (due to Gatekeeper / unidentified developer), please run this command in Terminal to bypass the signature check:
+            如果 macOS 拦截了应用运行（由于 Gatekeeper 未签名安全限制），请在终端中运行以下命令绕过限制：
+            
+            ```bash
+            xattr -cr /Applications/AIQuotaWidget.app
+            ```

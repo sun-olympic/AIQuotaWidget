@@ -55,6 +55,13 @@ swift run
 open .build/app/AIQuotaWidget.app
 ```
 
+> ⚠️ **Gatekeeper 未签名拦截提示**：
+> 如果您将 `AIQuotaWidget.app` 移动到 `/Applications` 目录并在打开时遭遇“应用损坏”或“无法验证开发者”的系统拦截，请在终端中运行以下命令以绕过 Gatekeeper 签名限制：
+>
+> ```bash
+> xattr -cr /Applications/AIQuotaWidget.app
+> ```
+
 > ⚠️ **已知环境前置**：部分 macOS「命令行工具（Command Line Tools）」安装存在重复模块映射 bug
 > （`/Library/Developer/CommandLineTools/usr/include/swift/` 下同时存在 `module.modulemap`
 > 与 `bridging.modulemap`，二者都定义 `SwiftBridging`，导致编译任何 `import Foundation` 的代码报
