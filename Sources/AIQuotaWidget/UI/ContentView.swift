@@ -44,7 +44,7 @@ struct ContentView: View {
             }
         }
         .popover(isPresented: $showSettings) {
-            SettingsView(settings: settings)
+            SettingsView(settings: settings, service: service)
         }
     }
 
@@ -153,14 +153,18 @@ struct ContentView: View {
     }
 
     private func loadedView(_ snapshot: QuotaSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let overrideText = (settings.selectedTab == .cursor && snapshot.mode == .legacy)
+            ? snapshot.primaryText.replacingOccurrences(of: " requests", with: "").replacingOccurrences(of: " / ", with: "/")
+            : nil
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 16) {
                 WaterBallView(
                     percent: snapshot.clampedPercent,
                     leftLabel: settings.t("left.suffix"),
                     waveEnabled: settings.waveEnabled,
                     color: snapshot.ledStatus.color,
-                    theme: settings.widgetTheme
+                    theme: settings.widgetTheme,
+                    centerTextOverride: overrideText
                 )
                 InfoBlockView(snapshot: snapshot, settings: settings)
                 Spacer(minLength: 0)
@@ -199,34 +203,65 @@ struct ContentView: View {
         let percent: Double
         let leftLabel: String
         let color: Color
+        let centerTextOverride: String?
     }
 
     private var collapsedWaterBallData: CollapsedWaterBallData {
         switch service.state(for: settings.selectedTab) {
         case .loaded(let snapshot):
+            let overrideText = (settings.selectedTab == .cursor && snapshot.mode == .legacy)
+                ? snapshot.primaryText.replacingOccurrences(of: " requests", with: "").replacingOccurrences(of: " / ", with: "/")
+                : nil
             return CollapsedWaterBallData(
                 percent: snapshot.clampedPercent,
                 leftLabel: settings.t("left.suffix"),
-                color: snapshot.ledStatus.color
+                color: snapshot.ledStatus.color,
+                centerTextOverride: overrideText
             )
         case .loading:
             return CollapsedWaterBallData(
                 percent: 0,
                 leftLabel: "...",
-                color: .blue
+                color: .blue,
+                centerTextOverride: nil
             )
         case .notLoggedIn, .needsReLogin, .notInstalled:
             return CollapsedWaterBallData(
                 percent: 0,
                 leftLabel: "?",
-                color: .orange
+                color: .orange,
+                centerTextOverride: nil
             )
         case .error:
             return CollapsedWaterBallData(
                 percent: 0,
                 leftLabel: "!",
-                color: .red
+                color: .red,
+                centerTextOverride: nil
             )
+        }
+    }
+
+    var collapsedTooltipText: String {
+        let toolName = settings.t("tab.\(settings.selectedTab.rawValue)")
+        switch settings.selectedTab {
+        case .cursor:
+            if case let .loaded(snapshot) = service.state(for: .cursor), snapshot.mode == .usageBased {
+                let modeStr = settings.cursorBillingMode == .api ? settings.t("cursor.billingMode.api") : settings.t("cursor.billingMode.auto")
+                return "\(toolName) (\(modeStr))"
+            }
+            return toolName
+        case .codex:
+            return toolName
+        case .antigravity:
+            if case let .loaded(snapshot) = service.state(for: .antigravity),
+               let modelId = snapshot.activeAntigravityModelId ?? settings.antigravityDefaultModelId {
+                let modelName = snapshot.antigravityModels?.first(where: { $0.id == modelId })?.name ?? modelId
+                return "\(toolName) (\(modelName))"
+            } else if let modelId = settings.antigravityDefaultModelId {
+                return "\(toolName) (\(modelId))"
+            }
+            return toolName
         }
     }
 
@@ -238,9 +273,12 @@ struct ContentView: View {
             waveEnabled: settings.waveEnabled && data.percent > 0,
             color: data.color,
             size: 64,
-            theme: settings.widgetTheme
+            theme: settings.widgetTheme,
+            centerTextOverride: data.centerTextOverride
         )
         .frame(width: 80, height: 80, alignment: .center)
+        .contentShape(Rectangle())
+        .help(collapsedTooltipText)
         .onTapGesture(count: 2) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                 settings.isCollapsed = false
@@ -261,6 +299,56 @@ struct ContentView: View {
             Divider()
             Button(settings.t("action.settings")) {
                 showSettings = true
+            }
+            Menu(settings.t("action.switchTool")) {
+                ForEach(settings.enabledTabs) { tab in
+                    Button(action: {
+                        service.userSelect(tab)
+                    }) {
+                        HStack {
+                            Text(settings.t(tab.titleKey))
+                            if tab == settings.selectedTab {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+            if settings.selectedTab == .cursor {
+                if case let .loaded(snapshot) = service.state(for: .cursor), snapshot.mode == .usageBased {
+                    Menu(settings.t("settings.cursorBillingMode")) {
+                        ForEach(CursorBillingMode.allCases) { mode in
+                            Button(action: {
+                                settings.cursorBillingMode = mode
+                            }) {
+                                HStack {
+                                    Text(settings.t(mode.localizationKey))
+                                    if mode == settings.cursorBillingMode {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if settings.selectedTab == .antigravity {
+                if case let .loaded(snapshot) = service.state(for: .antigravity),
+                   let models = snapshot.antigravityModels, !models.isEmpty {
+                    Menu(settings.t("dim.antigravity")) {
+                        ForEach(models) { model in
+                            Button(action: {
+                                settings.antigravityDefaultModelId = model.id
+                            }) {
+                                HStack {
+                                    Text(model.name)
+                                    if model.id == snapshot.activeAntigravityModelId {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             Menu(settings.t("settings.theme")) {
                 ForEach(WidgetTheme.allCases) { theme in
@@ -290,7 +378,7 @@ struct ContentView: View {
 
     private var currentCornerRadius: CGFloat {
         if settings.isCollapsed {
-            return settings.widgetTheme == .capybara ? 20 : 40
+            return 40
         } else {
             return 18
         }

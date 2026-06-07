@@ -36,7 +36,8 @@ enum QuotaNormalizer {
             resetAt: reset,
             planName: input.planName,
             mode: .legacy,
-            onDemand: nil
+            onDemand: nil,
+            ledStatus: LEDStatus.from(remainingPercent: remainingPercent)
         )
     }
 
@@ -98,7 +99,8 @@ enum QuotaNormalizer {
             resetAt: reset,
             planName: input.planName,
             mode: .usageBased,
-            onDemand: onDemand
+            onDemand: onDemand,
+            ledStatus: LEDStatus.from(remainingPercent: remainingPercent)
         )
     }
 

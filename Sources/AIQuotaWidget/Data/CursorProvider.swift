@@ -5,6 +5,7 @@ struct CursorProvider: QuotaProvider {
     let productName = "Cursor"
     let client: AuthorizedHTTPClient
     let membershipType: String?
+    let billingMode: CursorBillingMode
 
     private var planName: String? {
         guard let m = membershipType, !m.isEmpty else { return nil }
@@ -14,7 +15,11 @@ struct CursorProvider: QuotaProvider {
     }
 
     func fetch() async throws -> QuotaSnapshot {
-        let usageBased = CursorUsageBasedProvider(client: client, fallbackPlanName: planName)
+        let usageBased = CursorUsageBasedProvider(
+            client: client,
+            fallbackPlanName: planName,
+            billingMode: billingMode
+        )
         // try? 展平 Optional：抛错或返回 nil（非 usage-based）都回退 legacy。
         if let snapshot = try? await usageBased.fetchActive() {
             return snapshot

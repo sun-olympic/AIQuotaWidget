@@ -17,6 +17,7 @@ final class AppSettings: ObservableObject {
         static let coarseModelGrouping = "settings.coarseModelGrouping"
         static let autoCollapse = "settings.autoCollapse"
         static let widgetTheme = "settings.widgetTheme"
+        static let cursorBillingMode = "settings.cursorBillingMode"
     }
 
     private let defaults: UserDefaults
@@ -75,6 +76,10 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(widgetTheme.rawValue, forKey: Key.widgetTheme) }
     }
 
+    @Published var cursorBillingMode: CursorBillingMode {
+        didSet { defaults.set(cursorBillingMode.rawValue, forKey: Key.cursorBillingMode) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -98,6 +103,12 @@ final class AppSettings: ObservableObject {
             self.widgetTheme = t
         } else {
             self.widgetTheme = .waterBall
+        }
+
+        if let rawMode = defaults.string(forKey: Key.cursorBillingMode), let m = CursorBillingMode(rawValue: rawMode) {
+            self.cursorBillingMode = m
+        } else {
+            self.cursorBillingMode = .auto
         }
 
         let enabled: [ProductTab]
@@ -145,13 +156,20 @@ final class AppSettings: ObservableObject {
 /// 悬浮球的外观主题。
 enum WidgetTheme: String, CaseIterable, Identifiable {
     case waterBall = "waterBall"
-    case capybara = "capybara"
     case doraemon = "doraemon"
-    case snowWhite = "snowWhite"
     
     var id: String { rawValue }
     
     var localizationKey: String { "theme.\(rawValue)" }
+}
+
+/// Cursor 的计费模式。
+enum CursorBillingMode: String, CaseIterable, Identifiable {
+    case api = "api"
+    case auto = "auto"
+
+    var id: String { rawValue }
+    var localizationKey: String { "cursor.billingMode.\(rawValue)" }
 }
 
 /// 额度来源（同时作为顶部 Tab）。

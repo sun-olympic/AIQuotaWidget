@@ -5,6 +5,7 @@ struct CursorUsageBasedProvider: QuotaProvider {
     let productName = "Cursor"
     let client: AuthorizedHTTPClient
     let fallbackPlanName: String?
+    let billingMode: CursorBillingMode
 
     func fetch() async throws -> QuotaSnapshot {
         guard let snapshot = try await fetchActive() else {
@@ -29,7 +30,25 @@ struct CursorUsageBasedProvider: QuotaProvider {
             return nil
         }
 
+        let apiPercentUsed = planUsage?.double("apiPercentUsed")
+        let autoPercentUsed = planUsage?.double("autoPercentUsed")
+
+        let selectedPercentUsed: Double?
+        switch billingMode {
+        case .api:
+            selectedPercentUsed = apiPercentUsed ?? totalPercentUsed
+        case .auto:
+            selectedPercentUsed = autoPercentUsed ?? totalPercentUsed
+        }
+
         let remainingCents = planUsage?.double("remaining")
+        let calculatedRemainingCents: Double?
+        if let limit = limitCents, let used = selectedPercentUsed {
+            calculatedRemainingCents = limit * (1 - used / 100)
+        } else {
+            calculatedRemainingCents = remainingCents
+        }
+
         let billingCycleEnd = digger.string("billingCycleEnd")
 
         let spend = digger.dict("spendLimitUsage")
@@ -39,8 +58,8 @@ struct CursorUsageBasedProvider: QuotaProvider {
         let plan = (try? await fetchPlanName()) ?? fallbackPlanName
 
         return QuotaNormalizer.usageBased(
-            .init(totalPercentUsed: totalPercentUsed,
-                  remainingCents: remainingCents,
+            .init(totalPercentUsed: selectedPercentUsed,
+                  remainingCents: calculatedRemainingCents,
                   limitCents: limitCents,
                   billingCycleEndMillis: billingCycleEnd,
                   planName: plan,

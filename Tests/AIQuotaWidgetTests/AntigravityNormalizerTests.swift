@@ -19,12 +19,21 @@ final class AntigravityNormalizerTests: XCTestCase {
 
     func testMainDimensionYellowThreshold() throws {
         let models = [
-            AntigravityNormalizer.Model(id: "m1", remainingFraction: 0.15, resetAt: nil, isExhausted: false)
+            AntigravityNormalizer.Model(id: "m1", remainingFraction: 0.35, resetAt: nil, isExhausted: false)
         ]
         let snapshot = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "m1"))
-        XCTAssertEqual(snapshot.remainingPercent, 15, accuracy: 0.001)
+        XCTAssertEqual(snapshot.remainingPercent, 35, accuracy: 0.001)
         XCTAssertEqual(snapshot.ledStatus, .yellow)
         XCTAssertNil(snapshot.secondaryWindows)
+    }
+
+    func testMainDimensionRedThreshold() throws {
+        let models = [
+            AntigravityNormalizer.Model(id: "m1", remainingFraction: 0.20, resetAt: nil, isExhausted: false)
+        ]
+        let snapshot = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "m1"))
+        XCTAssertEqual(snapshot.remainingPercent, 20, accuracy: 0.001)
+        XCTAssertEqual(snapshot.ledStatus, .red)
     }
 
     func testFallbackToFirstWhenDefaultMissing() throws {

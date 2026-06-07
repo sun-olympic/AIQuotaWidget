@@ -62,6 +62,13 @@ final class QuotaService: ObservableObject {
                 self?.refresh(.antigravity)
             }
             .store(in: &cancellables)
+
+        settings.$cursorBillingMode
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.refresh(.cursor)
+            }
+            .store(in: &cancellables)
     }
 
     /// 用户主动点击 Tab：永久禁用自动默认选择，并切换。
@@ -186,7 +193,17 @@ final class QuotaService: ObservableObject {
             accessToken: credentials.accessToken,
             refreshToken: credentials.refreshToken
         )
-        let provider = CursorProvider(client: client, membershipType: credentials.membershipType)
+        let provider = CursorProvider(
+            client: client,
+            membershipType: credentials.membershipType,
+            billingMode: settings.cursorBillingMode
+        )
         return try await provider.fetch()
     }
+
+    #if DEBUG
+    func setTestState(_ state: WidgetState, for tab: ProductTab) {
+        setState(state, for: tab)
+    }
+    #endif
 }

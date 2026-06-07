@@ -444,11 +444,11 @@ final class WidgetWindowControllerTests: XCTestCase {
         var settings = AppSettings(defaults: defaults)
         XCTAssertEqual(settings.widgetTheme, .waterBall) // Default should be waterBall
         
-        settings.widgetTheme = .capybara
+        settings.widgetTheme = .doraemon
         
         // Re-init settings to see if it retrieves from defaults
         settings = AppSettings(defaults: defaults)
-        XCTAssertEqual(settings.widgetTheme, .capybara)
+        XCTAssertEqual(settings.widgetTheme, .doraemon)
         
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }

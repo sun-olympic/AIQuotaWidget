@@ -16,6 +16,12 @@ enum AntigravityNormalizer {
         var name: String { displayName ?? AntigravityNormalizer.displayName(id) }
     }
 
+    static func ledStatus(for percent: Double) -> LEDStatus {
+        if percent <= 20 { return .red }
+        if percent <= 40 { return .yellow }
+        return .green
+    }
+
     static func make(models: [Model], defaultModelId: String?, coarseGrouping: Bool = false) -> QuotaSnapshot? {
         guard !models.isEmpty else { return nil }
 
@@ -79,11 +85,13 @@ enum AntigravityNormalizer {
         // 3. 构建 secondaryWindows
         var sortedOthers: [QuotaWindow] = []
         for model in dedupedModels.filter({ $0.id != main.id }) {
+            let remPercent = QuotaNormalizer.clamp(model.remainingFraction * 100)
             sortedOthers.append(QuotaWindow(
                 name: model.name,
-                remainingPercent: QuotaNormalizer.clamp(model.remainingFraction * 100),
+                remainingPercent: remPercent,
                 resetAt: model.resetAt,
-                isExhausted: model.isExhausted
+                isExhausted: model.isExhausted,
+                ledStatus: AntigravityNormalizer.ledStatus(for: remPercent)
             ))
         }
         sortedOthers.sort {
@@ -108,7 +116,8 @@ enum AntigravityNormalizer {
             onDemand: nil,
             secondaryWindows: sortedOthers.isEmpty ? nil : sortedOthers,
             antigravityModels: switcherModels,
-            activeAntigravityModelId: main.id
+            activeAntigravityModelId: main.id,
+            ledStatus: AntigravityNormalizer.ledStatus(for: remaining)
         )
     }
 

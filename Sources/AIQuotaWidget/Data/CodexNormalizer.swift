@@ -18,11 +18,13 @@ enum CodexNormalizer {
 
         var secondary: [QuotaWindow]?
         if let su = input.secondaryUsedPercent {
+            let secondaryRemaining = QuotaNormalizer.clamp(100 - su)
             secondary = [
                 QuotaWindow(
                     name: CodexConfig.secondaryWindowName,
-                    remainingPercent: QuotaNormalizer.clamp(100 - su),
-                    resetAt: input.secondaryResetAt
+                    remainingPercent: secondaryRemaining,
+                    resetAt: input.secondaryResetAt,
+                    ledStatus: LEDStatus.from(remainingPercent: secondaryRemaining)
                 )
             ]
         }
@@ -35,7 +37,8 @@ enum CodexNormalizer {
             planName: input.planType.map(normalizePlan),
             mode: .unknown,
             onDemand: nil,
-            secondaryWindows: secondary
+            secondaryWindows: secondary,
+            ledStatus: LEDStatus.from(remainingPercent: remaining)
         )
     }
 

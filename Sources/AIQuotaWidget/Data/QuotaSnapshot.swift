@@ -32,13 +32,12 @@ struct QuotaWindow: Equatable, Identifiable {
     let resetAt: Date?
     /// 是否已耗尽。
     var isExhausted: Bool = false
+    /// LED 状态。
+    let ledStatus: LEDStatus
 
     var id: String { name }
 
     var clampedPercent: Double { min(100, max(0, remainingPercent)) }
-
-    /// 阈值与主维度复用同一套（<10 红 / <20 黄 / ≥20 绿）。
-    var ledStatus: LEDStatus { LEDStatus.from(remainingPercent: remainingPercent) }
 }
 
 /// usage-based 下的 on-demand（按需）预算使用情况，作为独立小条展示。
@@ -82,10 +81,8 @@ struct QuotaSnapshot: Equatable {
     var antigravityModels: [AntigravityModelInfo]? = nil
     /// 当前激活的 Antigravity 模型 ID。
     var activeAntigravityModelId: String? = nil
-
-    var ledStatus: LEDStatus {
-        LEDStatus.from(remainingPercent: remainingPercent)
-    }
+    /// LED 状态。
+    var ledStatus: LEDStatus
 
     /// 归一化后保证 0–100。
     var clampedPercent: Double {

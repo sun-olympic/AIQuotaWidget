@@ -73,7 +73,11 @@ struct InfoBlockView: View {
             .foregroundStyle(.white.opacity(0.8))
 
             if let plan = snapshot.planName {
-                Text("\(settings.t("plan.label")): \(plan)")
+                Text("\(settings.t("plan.label")): \(plan)" + (settings.selectedTab == .cursor ? " (\(settings.cursorBillingMode == .api ? settings.t("cursor.billingMode.api") : settings.t("cursor.billingMode.auto")))" : ""))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+            } else if settings.selectedTab == .cursor {
+                Text("\(settings.t("settings.cursorBillingMode")): \(settings.cursorBillingMode == .api ? settings.t("cursor.billingMode.api") : settings.t("cursor.billingMode.auto"))")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.9))
             }

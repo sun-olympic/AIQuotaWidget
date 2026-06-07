@@ -3,6 +3,7 @@ import SwiftUI
 /// 设置面板：语言、刷新间隔、水球晃动、置顶。
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var service: QuotaService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -28,9 +29,19 @@ struct SettingsView: View {
                 }
             }
 
+            if settings.enabledTabs.contains(.cursor) && isCursorUsageBased {
+                Picker(settings.t("settings.cursorBillingMode"), selection: $settings.cursorBillingMode) {
+                    ForEach(CursorBillingMode.allCases) { mode in
+                        Text(settings.t(mode.localizationKey)).tag(mode)
+                    }
+                }
+            }
+
             Toggle(settings.t("settings.wave"), isOn: $settings.waveEnabled)
             Toggle(settings.t("settings.pinned"), isOn: $settings.pinnedOnTop)
-            Toggle(settings.t("settings.coarseModelGrouping"), isOn: $settings.coarseModelGrouping)
+            if settings.enabledTabs.contains(.antigravity) {
+                Toggle(settings.t("settings.coarseModelGrouping"), isOn: $settings.coarseModelGrouping)
+            }
             Toggle(settings.t("settings.autoCollapse"), isOn: $settings.autoCollapse)
 
             Divider()
@@ -68,5 +79,12 @@ struct SettingsView: View {
             return "\(Int(interval)) \(settings.t("interval.seconds"))"
         }
         return "\(Int(interval / 60)) \(settings.t("interval.minutes"))"
+    }
+
+    private var isCursorUsageBased: Bool {
+        if case let .loaded(snapshot) = service.state(for: .cursor) {
+            return snapshot.mode == .usageBased
+        }
+        return false
     }
 }
