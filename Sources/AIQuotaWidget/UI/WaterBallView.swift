@@ -134,28 +134,31 @@ struct WaterBallView: View {
             path.addEllipse(in: rect)
             
         case .doraemon:
+            let ox = rect.origin.x
+            let oy = rect.origin.y
+            
             // Head
-            let headRect = CGRect(x: w * 0.18, y: h * 0.08, width: w * 0.64, height: h * 0.48)
+            let headRect = CGRect(x: ox + w * 0.18, y: oy + h * 0.08, width: w * 0.64, height: h * 0.48)
             path.addPath(Path(ellipseIn: headRect))
             
             // Body / Torso
-            let bodyRect = CGRect(x: w * 0.22, y: h * 0.52, width: w * 0.56, height: h * 0.36)
+            let bodyRect = CGRect(x: ox + w * 0.22, y: oy + h * 0.52, width: w * 0.56, height: h * 0.36)
             path.addPath(Path(roundedRect: bodyRect, cornerRadius: w * 0.12))
             
             // Left Hand
-            let leftHandRect = CGRect(x: w * 0.26, y: h * 0.56, width: w * 0.12, height: h * 0.12)
+            let leftHandRect = CGRect(x: ox + w * 0.12, y: oy + h * 0.56, width: w * 0.12, height: h * 0.12)
             path.addPath(Path(ellipseIn: leftHandRect))
             
             // Right Hand
-            let rightHandRect = CGRect(x: w * 0.62, y: h * 0.56, width: w * 0.12, height: h * 0.12)
+            let rightHandRect = CGRect(x: ox + w * 0.76, y: oy + h * 0.56, width: w * 0.12, height: h * 0.12)
             path.addPath(Path(ellipseIn: rightHandRect))
             
             // Left Foot
-            let leftFootRect = CGRect(x: w * 0.20, y: h * 0.84, width: w * 0.24, height: h * 0.12)
+            let leftFootRect = CGRect(x: ox + w * 0.20, y: oy + h * 0.84, width: w * 0.24, height: h * 0.12)
             path.addPath(Path(ellipseIn: leftFootRect))
             
             // Right Foot
-            let rightFootRect = CGRect(x: w * 0.56, y: h * 0.84, width: w * 0.24, height: h * 0.12)
+            let rightFootRect = CGRect(x: ox + w * 0.56, y: oy + h * 0.84, width: w * 0.24, height: h * 0.12)
             path.addPath(Path(ellipseIn: rightFootRect))
         }
 
