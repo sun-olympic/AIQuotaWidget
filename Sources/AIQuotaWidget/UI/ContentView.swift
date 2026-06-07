@@ -267,12 +267,13 @@ struct ContentView: View {
 
     private var collapsedView: some View {
         let data = collapsedWaterBallData
+        let size: CGFloat = settings.widgetTheme == .waterBall ? 64 : 80
         return WaterBallView(
             percent: data.percent,
             leftLabel: data.leftLabel,
             waveEnabled: settings.waveEnabled && data.percent > 0,
             color: data.color,
-            size: 64,
+            size: size,
             theme: settings.widgetTheme,
             centerTextOverride: data.centerTextOverride
         )
@@ -418,9 +419,11 @@ struct WidgetClipShape: Shape {
     
     func path(in rect: CGRect) -> Path {
         if isCollapsed {
-            // 折叠状态下，悬浮球大小为 64x64，居中放置在 80x80 的窗口中
-            // 边缘留白为 (80 - 64) / 2 = 8
-            let ballRect = CGRect(x: 8, y: 8, width: 64, height: 64)
+            // 折叠状态下，如果为经典水球，则大小为 64x64，居中放置在 80x80 窗口中（留白 8pt）
+            // 如果为角色主题，则使用 80x80 以使角色最大化展示（角色路径本身已包含适当留白）
+            let size: CGFloat = theme == .waterBall ? 64 : 80
+            let padding = (rect.width - size) / 2
+            let ballRect = CGRect(x: padding, y: padding, width: size, height: size)
             return WaterBallView.silhouettePath(for: theme, in: ballRect)
         } else {
             var path = Path()

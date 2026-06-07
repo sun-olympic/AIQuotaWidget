@@ -69,6 +69,12 @@ struct WaterBallView: View {
                     .foregroundStyle(.white.opacity(0.85))
             }
         }
+        .padding(.horizontal, theme == .waterBall ? 0 : size * 0.08)
+        .padding(.vertical, theme == .waterBall ? 0 : size * 0.04)
+        .background(
+            theme == .waterBall ? Color.clear : Color.black.opacity(0.35),
+            in: Capsule()
+        )
         .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
         .offset(y: theme == .waterBall ? 0 : size * 0.08)
     }
