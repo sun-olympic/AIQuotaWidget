@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Application
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Package Application
+        run: |
+          cd .build/app
+          zip -y -r ../../AIQuotaWidget.zip AIQuotaWidget.app
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AIQuotaWidget.zip
+          generate_release_notes: true
