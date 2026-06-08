@@ -63,8 +63,7 @@ enum Strings {
         "settings.cursorBillingMode": [.english: "Cursor Billing Mode", .chinese: "Cursor 计费模式"],
         "cursor.billingMode.api": [.english: "API Mode", .chinese: "API 模式"],
         "cursor.billingMode.auto": [.english: "Auto Mode", .chinese: "Auto 模式"],
-        "settings.telemetryEnabled": [.english: "Send anonymous usage duration", .chinese: "发送匿名使用时长统计"],
-        "settings.telemetryGroup": [.english: "Telemetry Settings", .chinese: "使用统计设置"],
+
         "settings.customCodexPath": [.english: "Custom Codex Path", .chinese: "自定义 Codex 路径"],
         "settings.customCodexPathPlaceholder": [.english: "Path to codex binary or Codex.app", .chinese: "指向 codex 二进制或 Codex.app"],
         "settings.theme": [.english: "Theme Style", .chinese: "外观主题"],

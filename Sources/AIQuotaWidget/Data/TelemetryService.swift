@@ -47,7 +47,6 @@ final class TelemetryService {
     @MainActor
     private func sendHeartbeat() {
         guard let settings = settings else { return }
-        guard settings.telemetryEnabled else { return }
 
         let now = Date()
         let duration = now.timeIntervalSince(lastHeartbeatTime)

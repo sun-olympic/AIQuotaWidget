@@ -56,15 +56,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Divider()
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(settings.t("settings.telemetryGroup"))
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.8))
-                    
-                    Toggle(settings.t("settings.telemetryEnabled"), isOn: $settings.telemetryEnabled)
-                }
 
                 Divider()
 

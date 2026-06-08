@@ -231,7 +231,6 @@ final class AntigravityNormalizerTests: XCTestCase {
     
     func testTelemetrySettingsDefaults() {
         let settings = AppSettings(defaults: UserDefaults())
-        XCTAssertTrue(settings.telemetryEnabled)
         XCTAssertEqual(settings.gaMeasurementId, "G-GKFXHCNSSZ")
         XCTAssertEqual(settings.gaApiSecret, "SzKz2nLSQeqlQk7TuVK1Qw")
         XCTAssertEqual(settings.customCodexPath, "")

@@ -18,7 +18,6 @@ final class AppSettings: ObservableObject {
         static let autoCollapse = "settings.autoCollapse"
         static let widgetTheme = "settings.widgetTheme"
         static let cursorBillingMode = "settings.cursorBillingMode"
-        static let telemetryEnabled = "settings.telemetryEnabled"
         static let telemetryInstallationId = "settings.telemetryInstallationId"
         static let customCodexPath = "settings.customCodexPath"
     }
@@ -83,10 +82,6 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(cursorBillingMode.rawValue, forKey: Key.cursorBillingMode) }
     }
 
-    @Published var telemetryEnabled: Bool {
-        didSet { defaults.set(telemetryEnabled, forKey: Key.telemetryEnabled) }
-    }
-
     let gaMeasurementId = "G-GKFXHCNSSZ"
     let gaApiSecret = "SzKz2nLSQeqlQk7TuVK1Qw"
 
@@ -129,7 +124,6 @@ final class AppSettings: ObservableObject {
             self.cursorBillingMode = .auto
         }
 
-        self.telemetryEnabled = defaults.object(forKey: Key.telemetryEnabled) as? Bool ?? true
         self.customCodexPath = defaults.string(forKey: Key.customCodexPath) ?? ""
         if let instId = defaults.string(forKey: Key.telemetryInstallationId), !instId.isEmpty {
             self.telemetryInstallationId = instId
