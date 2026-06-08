@@ -4,14 +4,16 @@
 
 ## 功能
 
-- **透明液态玻璃悬浮窗**：基于 `NSPanel` + `NSVisualEffectView`，半透明、可透出桌面背景。
+- **透明液态玻璃悬浮窗**：基于 `NSPanel` + `NSVisualEffectView`，半透明、可透出桌面背景，精致且不打扰视线。
+- **哆啦A梦卡通角色主题**：不仅有经典水箱圆形，还支持纯 SwiftUI 矢量路径绘制的**哆啦A梦全身形象主题**。水波水位会严格在角色全身轮廓内起伏，且文字配有半透明高对比度黑胶囊背板以防止文字遮挡。
 - **三来源切换 Tab**：顶部 Cursor / Codex / Antigravity，切换即驱动对应 Provider；单来源失效（未安装/未登录/接口失效）只在其 Tab 显示引导态，不影响其它来源；启动默认落到一个可用来源。
 - **三色 LED 状态灯**：剩余 `< 10%` 红、`< 20%` 黄、`≥ 20%` 绿。各来源主维度：Cursor=月额度、Codex=5h 窗口、Antigravity=默认模型。
-- **水球水位动画**：圆形水球水位对应主维度剩余百分比，球心显示「P% Left」；正弦晃动动画可在设置中开关。
-- **主水球 + 次级条列表**：Codex 在 5h 主维度下展示 7d 窗口次级条；Antigravity 在默认模型主维度下按模型分组列出其余模型。三来源共用同一渲染范式。
-- **Cursor 双计费模型自动适配**：运行时自动探测——优先 usage-based（美元额度），无有效 `planUsage` 时回退 legacy（按请求次数）；usage-based 下 on-demand 作为独立小条，不并入主水位。
-- **Codex 双窗口**：spawn 短命 `codex app-server`（JSON-RPC over stdio），`account/rateLimits/read` 读取 5h/7d 的 `usedPercent`/`resetsAt`/`planType`。
-- **Antigravity 多模型**：本地 Language Server 优先、云端 `fetchAvailableModels` 回退，解析各模型 `remainingFraction`/`resetTime`/`isExhausted`；带 5 分钟轻量缓存。
+- **水球水位动画**：圆形水球水位对应主维度剩余百分比，球心显示剩余用量；正弦晃动动画可在设置中开关。
+- **双击折叠与展开**：小组件可以折叠为极简的悬浮球（支持 Tooltip 气泡提示当前激活的 AI 工具和计费/模型状态），**双击悬浮球即可平滑还原为大面板**，鼠标移开 0.8s 自动收回。
+- **Cursor 计费模式直切**：支持解析 Cursor 新版 Usage-based（美元额度）计费。在主面板直接点击余额（如 `$167.78 left`）即可弹出菜单，在 **API 模式** 与 **Auto 模式** 之间直接无缝直切。
+- **自定义 Codex 路径**：支持指定自定义 Codex 可执行路径（支持填入 `.app` 包路径如 `/Applications/Codex.app`，程序会自动寻路其内部二进制可执行文件），完美解决客户端安装在非标准目录导致无法加载的问题。
+- **Antigravity 套餐展示**：接入本地 Connect 接口的 `/GetUserStatus`，自动高优解析并展示用户的套餐计划名称（如 `Google AI Pro`）。
+- **心跳时长 GA4 统计**：后台自动使用 Google Analytics 4 (GA4) Measurement Protocol 进行匿名使用时长统计（事件 `app_heartbeat`），提供完全无感的零本地数据库统计服务。
 - **窗口行为**：自由拖拽到任意位置、置顶/取消置顶切换、记忆窗口位置；不出现在 Dock 与 Cmd+Tab（Accessory 应用）。
 - **设置与本地化**：中英文一键即时切换、可配置刷新间隔、手动刷新按钮、水球晃动开关；偏好持久化到 `UserDefaults`，重启恢复。
 
@@ -56,11 +58,14 @@ open .build/app/AIQuotaWidget.app
 ```
 
 > ⚠️ **Gatekeeper 未签名拦截提示**：
-> 如果您将 `AIQuotaWidget.app` 移动到 `/Applications` 目录并在打开时遭遇“应用损坏”或“无法验证开发者”的系统拦截，请在终端中运行以下命令以绕过 Gatekeeper 签名限制：
->
-> ```bash
-> xattr -cr /Applications/AIQuotaWidget.app
-> ```
+> 如果您在打开应用时遭遇系统提示“应用已损坏，应移至废纸篓”或“无法验证开发者”，这是由于 macOS 针对未签名应用的 Gatekeeper 安全限制拦截所致。请使用以下两种方式之一绕过拦截：
+> 
+> * **图形化授信（推荐）**：在访达（Finder）中，**按住 `Control` 键并右键点击 `AIQuotaWidget.app`**，选择 **打开 (Open)**，在弹出的系统对话框中点击 **打开 (Open)** 按钮即可，后续再次双击即可正常使用。
+> * **终端命令（命令行）**：打开终端运行以下命令清除隔离属性：
+> 
+>   ```bash
+>   xattr -cr /Applications/AIQuotaWidget.app
+>   ```
 
 > ⚠️ **已知环境前置**：部分 macOS「命令行工具（Command Line Tools）」安装存在重复模块映射 bug
 > （`/Library/Developer/CommandLineTools/usr/include/swift/` 下同时存在 `module.modulemap`
