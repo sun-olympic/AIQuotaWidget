@@ -26,8 +26,9 @@ final class TelemetryService {
 
         // 60秒定时器
         let timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
             Task { @MainActor in
-                self?.sendHeartbeat()
+                self.sendHeartbeat()
             }
         }
         RunLoop.main.add(timer, forMode: .common)
