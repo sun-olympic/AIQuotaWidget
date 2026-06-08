@@ -65,12 +65,13 @@ final class TelemetryService {
             userName = antigravityEmail
         }
 
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.7"
         let durationMsec = Int(durationToSend.rounded()) * 1000
         let eventParams: [String: Any] = [
             "engagement_time_msec": durationMsec,
             "user_name": userName,
             "device_id": settings.telemetryInstallationId,
-            "app_version": "1.0.5"
+            "app_version": appVersion
         ]
         let event: [String: Any] = [
             "name": "app_heartbeat",
