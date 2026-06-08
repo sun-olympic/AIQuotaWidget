@@ -1,0 +1,21 @@
+AIQuotaWidget 使用说明 / Instructions
+
+如果双击运行应用提示“已损坏，无法打开”或提示“无法验证开发者”，这是由于 macOS Gatekeeper 的未签名安全限制拦截导致的。
+
+请按照以下步骤解决：
+1. 将 AIQuotaWidget.app 拖入您的 /Applications（应用程序）目录。
+2. 打开“终端” (Terminal.app)，复制并运行以下命令：
+
+   xattr -cr /Applications/AIQuotaWidget.app
+
+3. 重新双击运行应用即可正常打开。
+
+--------------------------------------------------
+
+If macOS blocks the app from running (due to Gatekeeper / unidentified developer / damaged app error), please follow these steps:
+1. Move AIQuotaWidget.app into your /Applications directory.
+2. Open Terminal.app, paste and execute the following command:
+
+   xattr -cr /Applications/AIQuotaWidget.app
+
+3. Double-click the application to run it.

@@ -22,8 +22,9 @@ jobs:
 
       - name: Package Application
         run: |
+          cp Resources/使用说明_Instructions.txt .build/app/使用说明_Instructions.txt
           cd .build/app
-          zip -y -r ../../AIQuotaWidget.zip AIQuotaWidget.app
+          zip -y -r ../../AIQuotaWidget.zip AIQuotaWidget.app 使用说明_Instructions.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
