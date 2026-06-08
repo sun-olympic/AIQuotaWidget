@@ -19,8 +19,6 @@ final class AppSettings: ObservableObject {
         static let widgetTheme = "settings.widgetTheme"
         static let cursorBillingMode = "settings.cursorBillingMode"
         static let telemetryEnabled = "settings.telemetryEnabled"
-        static let gaMeasurementId = "settings.gaMeasurementId"
-        static let gaApiSecret = "settings.gaApiSecret"
         static let telemetryInstallationId = "settings.telemetryInstallationId"
         static let customCodexPath = "settings.customCodexPath"
     }
@@ -89,13 +87,8 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(telemetryEnabled, forKey: Key.telemetryEnabled) }
     }
 
-    @Published var gaMeasurementId: String {
-        didSet { defaults.set(gaMeasurementId, forKey: Key.gaMeasurementId) }
-    }
-
-    @Published var gaApiSecret: String {
-        didSet { defaults.set(gaApiSecret, forKey: Key.gaApiSecret) }
-    }
+    let gaMeasurementId = "G-GKFXHCNSSZ"
+    let gaApiSecret = "SzKz2nLSQeqlQk7TuVK1Qw"
 
     @Published var telemetryInstallationId: String {
         didSet { defaults.set(telemetryInstallationId, forKey: Key.telemetryInstallationId) }
@@ -137,8 +130,6 @@ final class AppSettings: ObservableObject {
         }
 
         self.telemetryEnabled = defaults.object(forKey: Key.telemetryEnabled) as? Bool ?? true
-        self.gaMeasurementId = defaults.string(forKey: Key.gaMeasurementId) ?? "G-GKFXHCNSSZ"
-        self.gaApiSecret = defaults.string(forKey: Key.gaApiSecret) ?? "SzKz2nLSQeqlQk7TuVK1Qw"
         self.customCodexPath = defaults.string(forKey: Key.customCodexPath) ?? ""
         if let instId = defaults.string(forKey: Key.telemetryInstallationId), !instId.isEmpty {
             self.telemetryInstallationId = instId

@@ -64,15 +64,6 @@ struct SettingsView: View {
                         .foregroundStyle(.white.opacity(0.8))
                     
                     Toggle(settings.t("settings.telemetryEnabled"), isOn: $settings.telemetryEnabled)
-                    
-                    if settings.telemetryEnabled {
-                        TextField(settings.t("settings.gaMeasurementId"), text: $settings.gaMeasurementId)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 10))
-                        TextField(settings.t("settings.gaApiSecret"), text: $settings.gaApiSecret)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 10))
-                    }
                 }
 
                 Divider()
