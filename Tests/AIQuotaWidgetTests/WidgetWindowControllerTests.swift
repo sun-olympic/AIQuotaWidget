@@ -13,6 +13,12 @@ final class WidgetWindowControllerTests: XCTestCase {
         }
     }
 
+    private func getSafeOrigin() -> CGPoint {
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1024, height: 768)
+        return CGPoint(x: visibleFrame.midX - 160, y: visibleFrame.midY - 110)
+    }
+
     @MainActor
     func testWindowHeightResizingOnTabChange() throws {
         let settings = AppSettings()
@@ -20,7 +26,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         settings.selectedTab = .cursor
         
         let controller = WidgetWindowController(settings: settings, rootView: TestView(settings: settings))
-        controller.panel.setFrameOrigin(CGPoint(x: -400, y: 400))
+        controller.panel.setFrameOrigin(getSafeOrigin())
         
         // Check initial height is defaultSize.height (220)
         XCTAssertEqual(controller.panel.frame.size.height, 220)
@@ -291,7 +297,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         let service = QuotaService(settings: settings)
         
         let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
-        controller.panel.setFrameOrigin(CGPoint(x: -400, y: 400))
+        controller.panel.setFrameOrigin(getSafeOrigin())
         
         // Let's check initial size (no service loaded yet, so height is 220)
         XCTAssertEqual(controller.panel.frame.size.width, 320)
@@ -363,7 +369,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         let service = QuotaService(settings: settings)
         
         let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
-        controller.panel.setFrameOrigin(CGPoint(x: -400, y: 400))
+        controller.panel.setFrameOrigin(getSafeOrigin())
         
         let initialTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
         let initialTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height

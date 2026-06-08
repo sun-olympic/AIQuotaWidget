@@ -72,7 +72,7 @@ final class TelemetryService {
             "app_version": "1.0.5"
         ]
         let event: [String: Any] = [
-            "name": "user_engagement",
+            "name": "app_heartbeat",
             "params": eventParams
         ]
         let payload: [String: Any] = [
