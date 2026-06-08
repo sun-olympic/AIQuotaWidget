@@ -55,7 +55,8 @@ enum CodexConfig {
     static let extraSearchDirs = [
         "/opt/homebrew/bin",
         "/usr/local/bin",
-        "/usr/bin"
+        "/usr/bin",
+        "/Applications/Codex.app/Contents/Resources"
     ]
 
     /// 窗口展示名。
@@ -77,6 +78,7 @@ enum AntigravityConfig {
     static let csrfArgName = "--csrf_token"
     /// 本地 Connect 方法路径。
     static let getAvailableModelsPath = "/exa.language_server_pb.LanguageServerService/GetAvailableModels"
+    static let getUserStatusPath = "/exa.language_server_pb.LanguageServerService/GetUserStatus"
     /// CSRF 校验所需的请求头名（实测）。
     static let csrfHeaderName = "x-codeium-csrf-token"
 

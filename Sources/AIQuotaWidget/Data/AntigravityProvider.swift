@@ -91,7 +91,27 @@ struct AntigravityProvider: QuotaProvider {
                   let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 continue
             }
-            if let raw = Self.parseRawData(data) {
+            
+            // Try fetching user status to get the plan/tier name
+            var planName: String? = nil
+            if let statusUrl = URL(string: "https://127.0.0.1:\(port)\(AntigravityConfig.getUserStatusPath)") {
+                var statusRequest = URLRequest(url: statusUrl)
+                statusRequest.httpMethod = "POST"
+                statusRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                statusRequest.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
+                statusRequest.setValue(server.csrfToken, forHTTPHeaderField: AntigravityConfig.csrfHeaderName)
+                statusRequest.httpBody = Data("{}".utf8)
+                
+                if let (statusData, statusResponse) = try? await session.data(for: statusRequest),
+                   let statusHttp = statusResponse as? HTTPURLResponse, statusHttp.statusCode == 200 {
+                    planName = Self.parsePlanName(from: statusData)
+                }
+            }
+            
+            if var raw = Self.parseRawData(data) {
+                if let planName = planName {
+                    raw.planName = planName
+                }
                 return raw
             }
         }
@@ -188,6 +208,35 @@ struct AntigravityProvider: QuotaProvider {
         }
 
         return AntigravityRawData(models: models, defaultModelId: defaultId, planName: normalizedPlan)
+    }
+
+    static func parsePlanName(from data: Data) -> String? {
+        guard let root = JSONDigger(data) else { return nil }
+        let status = root.dict("userStatus") ?? root
+        let rawPlan: String?
+        if let tierName = status.dict("userTier")?.string("name"), !tierName.isEmpty {
+            rawPlan = tierName
+        } else if let planInfoName = status.dict("planStatus")?.dict("planInfo")?.string("planName"), !planInfoName.isEmpty {
+            rawPlan = planInfoName
+        } else {
+            rawPlan = nil
+        }
+        
+        guard let p = rawPlan, !p.isEmpty else { return nil }
+        if p.lowercased() == "pro" {
+            return "PRO"
+        } else if p.lowercased() == "individual" {
+            return "Individual"
+        } else if p.lowercased() == "teams" {
+            return "Teams"
+        } else if p.lowercased() == "enterprise" {
+            return "Enterprise"
+        } else {
+            if p.contains(" ") {
+                return p
+            }
+            return p.prefix(1).uppercased() + p.dropFirst()
+        }
     }
 }
 

@@ -18,6 +18,9 @@ final class AppSettings: ObservableObject {
         static let autoCollapse = "settings.autoCollapse"
         static let widgetTheme = "settings.widgetTheme"
         static let cursorBillingMode = "settings.cursorBillingMode"
+        static let telemetryEnabled = "settings.telemetryEnabled"
+        static let telemetryEndpoint = "settings.telemetryEndpoint"
+        static let telemetryInstallationId = "settings.telemetryInstallationId"
     }
 
     private let defaults: UserDefaults
@@ -80,6 +83,18 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(cursorBillingMode.rawValue, forKey: Key.cursorBillingMode) }
     }
 
+    @Published var telemetryEnabled: Bool {
+        didSet { defaults.set(telemetryEnabled, forKey: Key.telemetryEnabled) }
+    }
+
+    @Published var telemetryEndpoint: String {
+        didSet { defaults.set(telemetryEndpoint, forKey: Key.telemetryEndpoint) }
+    }
+
+    @Published var telemetryInstallationId: String {
+        didSet { defaults.set(telemetryInstallationId, forKey: Key.telemetryInstallationId) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -109,6 +124,16 @@ final class AppSettings: ObservableObject {
             self.cursorBillingMode = m
         } else {
             self.cursorBillingMode = .auto
+        }
+
+        self.telemetryEnabled = defaults.object(forKey: Key.telemetryEnabled) as? Bool ?? true
+        self.telemetryEndpoint = defaults.string(forKey: Key.telemetryEndpoint) ?? "http://localhost:8080/api/telemetry"
+        if let instId = defaults.string(forKey: Key.telemetryInstallationId), !instId.isEmpty {
+            self.telemetryInstallationId = instId
+        } else {
+            let newId = UUID().uuidString
+            defaults.set(newId, forKey: Key.telemetryInstallationId)
+            self.telemetryInstallationId = newId
         }
 
         let enabled: [ProductTab]

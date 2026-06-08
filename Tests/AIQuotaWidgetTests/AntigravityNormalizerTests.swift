@@ -198,5 +198,42 @@ final class AntigravityNormalizerTests: XCTestCase {
         let snapshot = try XCTUnwrap(AntigravityNormalizer.make(models: models, defaultModelId: "google/gemini-pro", planName: "PRO"))
         XCTAssertEqual(snapshot.planName, "PRO")
     }
+
+    func testParsePlanName() throws {
+        let jsonStr = """
+        {
+          "userStatus": {
+            "userTier": {
+              "name": "Google AI Pro"
+            }
+          }
+        }
+        """
+        let data = Data(jsonStr.utf8)
+        let plan = AntigravityProvider.parsePlanName(from: data)
+        XCTAssertEqual(plan, "Google AI Pro")
+        
+        let jsonStrFallback = """
+        {
+          "userStatus": {
+            "planStatus": {
+              "planInfo": {
+                "planName": "pro"
+              }
+            }
+          }
+        }
+        """
+        let dataFallback = Data(jsonStrFallback.utf8)
+        let planFallback = AntigravityProvider.parsePlanName(from: dataFallback)
+        XCTAssertEqual(planFallback, "PRO")
+    }
+    
+    func testTelemetrySettingsDefaults() {
+        let settings = AppSettings(defaults: UserDefaults())
+        XCTAssertTrue(settings.telemetryEnabled)
+        XCTAssertEqual(settings.telemetryEndpoint, "http://localhost:8080/api/telemetry")
+        XCTAssertFalse(settings.telemetryInstallationId.isEmpty)
+    }
 }
 

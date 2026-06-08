@@ -46,6 +46,22 @@ struct SettingsView: View {
 
             Divider()
 
+            VStack(alignment: .leading, spacing: 4) {
+                Text(settings.t("settings.telemetryGroup"))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.8))
+                
+                Toggle(settings.t("settings.telemetryEnabled"), isOn: $settings.telemetryEnabled)
+                
+                if settings.telemetryEnabled {
+                    TextField(settings.t("settings.telemetryEndpoint"), text: $settings.telemetryEndpoint)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 10))
+                }
+            }
+
+            Divider()
+
             VStack(alignment: .leading, spacing: 6) {
                 Text(settings.t("settings.enabledTabs"))
                     .font(.system(size: 11, weight: .bold))

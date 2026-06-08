@@ -20,9 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         controller.show()
         service.start()
+        TelemetryService.shared.start(settings: settings, service: service)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        TelemetryService.shared.stop()
         service?.stop()
     }
 }

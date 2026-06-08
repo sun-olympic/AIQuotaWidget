@@ -29,7 +29,34 @@ struct InfoBlockView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if settings.selectedTab == .antigravity, let models = snapshot.antigravityModels, !models.isEmpty {
+            if settings.selectedTab == .cursor, snapshot.mode == .usageBased {
+                Menu {
+                    ForEach(CursorBillingMode.allCases) { mode in
+                        Button(action: {
+                            settings.cursorBillingMode = mode
+                        }) {
+                            HStack {
+                                Text(settings.t(mode.localizationKey))
+                                if mode == settings.cursorBillingMode {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(snapshot.primaryText)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                }
+                .menuStyle(.borderlessButton)
+            } else if settings.selectedTab == .antigravity, let models = snapshot.antigravityModels, !models.isEmpty {
                 Menu {
                     ForEach(models) { model in
                         Button(action: {
