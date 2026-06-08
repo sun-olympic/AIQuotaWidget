@@ -65,14 +65,23 @@ final class TelemetryService {
             userName = antigravityEmail
         }
 
+        let durationMsec = Int(durationToSend.rounded()) * 1000
+        let eventParams: [String: Any] = [
+            "engagement_time_msec": durationMsec,
+            "user_name": userName,
+            "app_version": "1.0.5"
+        ]
+        let event: [String: Any] = [
+            "name": "user_engagement",
+            "params": eventParams
+        ]
         let payload: [String: Any] = [
-            "installationId": settings.telemetryInstallationId,
-            "userName": userName,
-            "durationSeconds": Int(durationToSend.rounded()),
-            "appVersion": "1.0.5"
+            "client_id": settings.telemetryInstallationId,
+            "events": [event]
         ]
 
-        guard let url = URL(string: settings.telemetryEndpoint) else { return }
+        let urlString = "https://www.google-analytics.com/mp/collect?measurement_id=\(settings.gaMeasurementId)&api_secret=\(settings.gaApiSecret)"
+        guard let url = URL(string: urlString) else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

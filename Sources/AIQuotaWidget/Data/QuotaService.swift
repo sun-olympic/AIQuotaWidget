@@ -162,7 +162,7 @@ final class QuotaService: ObservableObject {
             case .cursor:
                 snapshot = try await fetchCursor()
             case .codex:
-                snapshot = try await CodexProvider().fetch()
+                snapshot = try await CodexProvider(settings: settings).fetch()
             case .antigravity:
                 snapshot = try await AntigravityProvider(
                     defaultModelOverride: settings.antigravityDefaultModelId,

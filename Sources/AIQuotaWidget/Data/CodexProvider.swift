@@ -4,10 +4,15 @@ import Foundation
 /// `initialize` 握手 +（延迟）→ `account/rateLimits/read`，读取 5h/7d 双窗口后立即结束子进程。
 struct CodexProvider: QuotaProvider {
     let productName = "Codex"
+    private let settings: AppSettings?
+
+    init(settings: AppSettings? = nil) {
+        self.settings = settings
+    }
 
     func fetch() async throws -> QuotaSnapshot {
         // 2.1 探测：区分「未安装」与「未登录」。
-        guard let executable = CodexAppServer.locateExecutable() else {
+        guard let executable = CodexAppServer.locateExecutable(settings: settings) else {
             throw QuotaError.notInstalled
         }
         guard CodexAppServer.isLoggedIn() else {
@@ -56,8 +61,21 @@ struct CodexProvider: QuotaProvider {
 enum CodexAppServer {
 
     /// 在 PATH 与常见目录中定位 `codex` 可执行文件。
-    static func locateExecutable() -> String? {
+    static func locateExecutable(settings: AppSettings? = nil) -> String? {
         let fm = FileManager.default
+        if let customPath = settings?.customCodexPath, !customPath.isEmpty {
+            var resolvedPath = customPath
+            if customPath.hasSuffix(".app") {
+                let appServerBinary = (customPath as NSString).appendingPathComponent("Contents/Resources/codex")
+                if fm.isExecutableFile(atPath: appServerBinary) {
+                    resolvedPath = appServerBinary
+                }
+            }
+            if fm.isExecutableFile(atPath: resolvedPath) {
+                return resolvedPath
+            }
+        }
+
         var dirs: [String] = []
         if let path = ProcessInfo.processInfo.environment["PATH"] {
             dirs.append(contentsOf: path.split(separator: ":").map(String.init))

@@ -20,7 +20,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         settings.selectedTab = .cursor
         
         let controller = WidgetWindowController(settings: settings, rootView: TestView(settings: settings))
-        controller.panel.setFrameOrigin(CGPoint(x: 200, y: 400))
+        controller.panel.setFrameOrigin(CGPoint(x: -400, y: 400))
         
         // Check initial height is defaultSize.height (220)
         XCTAssertEqual(controller.panel.frame.size.height, 220)
@@ -291,7 +291,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         let service = QuotaService(settings: settings)
         
         let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
-        controller.panel.setFrameOrigin(CGPoint(x: 200, y: 400))
+        controller.panel.setFrameOrigin(CGPoint(x: -400, y: 400))
         
         // Let's check initial size (no service loaded yet, so height is 220)
         XCTAssertEqual(controller.panel.frame.size.width, 320)
@@ -363,7 +363,7 @@ final class WidgetWindowControllerTests: XCTestCase {
         let service = QuotaService(settings: settings)
         
         let controller = WidgetWindowController(settings: settings, service: service, rootView: ContentView(settings: settings, service: service))
-        controller.panel.setFrameOrigin(CGPoint(x: 200, y: 400))
+        controller.panel.setFrameOrigin(CGPoint(x: -400, y: 400))
         
         let initialTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
         let initialTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height
