@@ -20,8 +20,8 @@ struct ContentView: View {
             }
         }
         .padding(settings.isCollapsed ? 0 : 14)
-        .frame(width: settings.isCollapsed ? 80 : 320,
-               height: settings.isCollapsed ? 80 : currentExpandedHeight)
+        .frame(width: settings.isCollapsed ? 120 : 320,
+               height: settings.isCollapsed ? 120 : currentExpandedHeight)
         .background(VisualEffectView(material: .hudWindow))
         .clipShape(WidgetClipShape(isCollapsed: settings.isCollapsed, theme: settings.widgetTheme, cornerRadius: currentCornerRadius))
         .overlay(
@@ -267,7 +267,7 @@ struct ContentView: View {
 
     private var collapsedView: some View {
         let data = collapsedWaterBallData
-        let size: CGFloat = settings.widgetTheme == .waterBall ? 64 : 80
+        let size: CGFloat = settings.widgetTheme == .waterBall ? 96 : 120
         return WaterBallView(
             percent: data.percent,
             leftLabel: data.leftLabel,
@@ -277,7 +277,7 @@ struct ContentView: View {
             theme: settings.widgetTheme,
             centerTextOverride: data.centerTextOverride
         )
-        .frame(width: 80, height: 80, alignment: .center)
+        .frame(width: 120, height: 120, alignment: .center)
         .contentShape(Rectangle())
         .help(collapsedTooltipText)
         .onTapGesture(count: 2) {
@@ -379,7 +379,7 @@ struct ContentView: View {
 
     private var currentCornerRadius: CGFloat {
         if settings.isCollapsed {
-            return 40
+            return 60
         } else {
             return 18
         }
@@ -419,9 +419,9 @@ struct WidgetClipShape: Shape {
     
     func path(in rect: CGRect) -> Path {
         if isCollapsed {
-            // 折叠状态下，如果为经典水球，则大小为 64x64，居中放置在 80x80 窗口中（留白 8pt）
-            // 如果为角色主题，则使用 80x80 以使角色最大化展示（角色路径本身已包含适当留白）
-            let size: CGFloat = theme == .waterBall ? 64 : 80
+            // 折叠状态下，如果为经典水球，则大小为 96x96，居中放置在 120x120 窗口中（留白 12pt）
+            // 如果为角色主题，则使用 120x120 以使角色最大化展示（角色路径本身已包含适当留白）
+            let size: CGFloat = theme == .waterBall ? 96 : 120
             let padding = (rect.width - size) / 2
             let ballRect = CGRect(x: padding, y: padding, width: size, height: size)
             return WaterBallView.silhouettePath(for: theme, in: ballRect)

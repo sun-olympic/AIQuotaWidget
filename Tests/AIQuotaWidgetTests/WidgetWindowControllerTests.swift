@@ -311,8 +311,8 @@ final class WidgetWindowControllerTests: XCTestCase {
         
         let expectation1 = self.expectation(description: "Collapse complete")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            XCTAssertEqual(controller.panel.frame.size.width, 80)
-            XCTAssertEqual(controller.panel.frame.size.height, 80)
+            XCTAssertEqual(controller.panel.frame.size.width, 120)
+            XCTAssertEqual(controller.panel.frame.size.height, 120)
             
             let collapsedTopRightX = controller.panel.frame.origin.x + controller.panel.frame.size.width
             let collapsedTopRightY = controller.panel.frame.origin.y + controller.panel.frame.size.height

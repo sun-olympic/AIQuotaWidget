@@ -29,6 +29,7 @@ xcrun swiftc -O \
 echo "==> Bundling"
 cp "$ROOT/Resources/Info.plist" "$BUNDLE/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$BUNDLE/Contents/Resources/AppIcon.icns"
+cp "$ROOT/Resources/doraemon.png" "$BUNDLE/Contents/Resources/doraemon.png"
 
 echo "==> Done: $BUNDLE"
 echo "Run with: open \"$BUNDLE\"  (或 \"$BUNDLE/Contents/MacOS/$APP_NAME\")"

@@ -22,7 +22,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         
         let initialSize: NSSize
         if settings.isCollapsed {
-            initialSize = NSSize(width: 80, height: 80)
+            initialSize = NSSize(width: 120, height: 120)
         } else {
             let baseHeight: CGFloat = 220
             var secondaryHeight: CGFloat = 0
@@ -93,7 +93,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
     private func recalculateWindowSize() {
         let targetSize: NSSize
         if settings.isCollapsed {
-            targetSize = NSSize(width: 80, height: 80)
+            targetSize = NSSize(width: 120, height: 120)
         } else {
             let baseHeight: CGFloat = 220
             var secondaryHeight: CGFloat = 0

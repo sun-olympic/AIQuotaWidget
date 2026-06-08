@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// 角色主题与水球视图：水位高度对应剩余百分比，球心显示「P% Left」或请求次数。
 /// 除经典水球外，哆啦A梦全身角色主题的外轮廓以及水位裁剪皆使用其特有的全身形象外形。
@@ -56,7 +57,7 @@ struct WaterBallView: View {
 
     private var label: some View {
         let hasOverride = centerTextOverride != nil
-        let mainFontSize = hasOverride ? (size * (13.0 / 96.0)) : (size * (22.0 / 96.0))
+        let mainFontSize = hasOverride ? (size * (13.0 / 96.0)) : (theme == .waterBall ? (size * (22.0 / 96.0)) : (size * (17.0 / 96.0)))
         return VStack(spacing: 0) {
             Text(centerTextOverride ?? "\(Int(percent.rounded()))%")
                 .font(.system(size: mainFontSize, weight: .bold, design: .rounded))
@@ -65,18 +66,18 @@ struct WaterBallView: View {
                 .minimumScaleFactor(0.7)
             if !hasOverride {
                 Text(leftLabel)
-                    .font(.system(size: size * (10.0 / 96.0), weight: .medium))
+                    .font(.system(size: theme == .waterBall ? (size * (10.0 / 96.0)) : (size * (9.0 / 96.0)), weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
         }
-        .padding(.horizontal, theme == .waterBall ? 0 : size * 0.08)
-        .padding(.vertical, theme == .waterBall ? 0 : size * 0.04)
+        .padding(.horizontal, theme == .waterBall ? 0 : size * 0.05)
+        .padding(.vertical, theme == .waterBall ? 0 : size * 0.03)
         .background(
             theme == .waterBall ? Color.clear : Color.black.opacity(0.35),
             in: Capsule()
         )
         .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
-        .offset(y: theme == .waterBall ? 0 : size * 0.08)
+        .offset(y: theme == .waterBall ? 0 : -size * 0.15)
     }
 
     private func waterCanvas(phase: Double, animated: Bool) -> some View {
@@ -172,7 +173,7 @@ struct WaterBallView: View {
     }
 }
 
-/// 绘制各个角色主题的矢量背景视图。
+/// 绘制各个角色主题的背景视图。
 struct ThemeBackgroundView: View {
     let theme: WidgetTheme
     let size: CGFloat
@@ -188,175 +189,48 @@ struct ThemeBackgroundView: View {
         }
     }
     
-    // 矢量全身哆啦A梦 (Doraemon)
     private var doraemonView: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            ZStack {
-                // 左手
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: w * 0.12, height: w * 0.12)
-                    .overlay(Circle().stroke(Color.black, lineWidth: w * 0.01))
-                    .offset(x: -w * 0.32, y: h * 0.12)
-                
-                // 右手
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: w * 0.12, height: w * 0.12)
-                    .overlay(Circle().stroke(Color.black, lineWidth: w * 0.01))
-                    .offset(x: w * 0.32, y: h * 0.12)
-
-                // Left arm
-                Capsule()
-                    .fill(Color(red: 0.12, green: 0.53, blue: 0.9))
-                    .frame(width: w * 0.12, height: h * 0.18)
-                    .rotationEffect(.degrees(30))
-                    .offset(x: -w * 0.26, y: h * 0.13)
-                
-                // Right arm
-                Capsule()
-                    .fill(Color(red: 0.12, green: 0.53, blue: 0.9))
-                    .frame(width: w * 0.12, height: h * 0.18)
-                    .rotationEffect(.degrees(-30))
-                    .offset(x: w * 0.26, y: h * 0.13)
-
-                // Left foot
-                Ellipse()
-                    .fill(Color.white)
-                    .overlay(Ellipse().stroke(Color.black, lineWidth: w * 0.01))
-                    .frame(width: w * 0.24, height: h * 0.12)
-                    .offset(x: -w * 0.18, y: h * 0.40)
-                
-                // Right foot
-                Ellipse()
-                    .fill(Color.white)
-                    .overlay(Ellipse().stroke(Color.black, lineWidth: w * 0.01))
-                    .frame(width: w * 0.24, height: h * 0.12)
-                    .offset(x: w * 0.18, y: h * 0.40)
-
-                // Torso (blue)
-                RoundedRectangle(cornerRadius: w * 0.12)
-                    .fill(Color(red: 0.12, green: 0.53, blue: 0.9))
-                    .frame(width: w * 0.56, height: h * 0.36)
-                    .offset(y: h * 0.20)
-                
-                // White belly
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: w * 0.44, height: w * 0.44)
-                    .offset(y: h * 0.18)
-                
-                // Pocket
-                Path { path in
-                    path.addArc(center: CGPoint(x: w * 0.5, y: h * 0.70),
-                                radius: w * 0.16,
-                                startAngle: .degrees(0),
-                                endAngle: .degrees(180),
-                                clockwise: false)
-                }
-                .stroke(Color.black, lineWidth: w * 0.015)
-
-                // Blue head
-                Ellipse()
-                    .fill(Color(red: 0.12, green: 0.53, blue: 0.9))
-                    .frame(width: w * 0.64, height: h * 0.48)
-                    .offset(y: -h * 0.18)
-                
-                // White face
-                Ellipse()
-                    .fill(Color.white)
-                    .frame(width: w * 0.56, height: h * 0.42)
-                    .offset(y: -h * 0.14)
-                
-                // Eyes
-                HStack(spacing: w * 0.02) {
-                    ZStack {
-                        Ellipse().fill(Color.white)
-                            .overlay(Ellipse().stroke(Color.black, lineWidth: w * 0.015))
-                        Circle().fill(Color.black).frame(width: w * 0.04, height: w * 0.04)
-                            .offset(x: w * 0.02, y: 0)
-                    }
-                    .frame(width: w * 0.16, height: h * 0.20)
-                    
-                    ZStack {
-                        Ellipse().fill(Color.white)
-                            .overlay(Ellipse().stroke(Color.black, lineWidth: w * 0.015))
-                        Circle().fill(Color.black).frame(width: w * 0.04, height: w * 0.04)
-                            .offset(x: -w * 0.02, y: 0)
-                    }
-                    .frame(width: w * 0.16, height: h * 0.20)
-                }
-                .offset(y: -h * 0.25)
-                
-                // Red nose
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: w * 0.11, height: w * 0.11)
-                    .offset(y: -h * 0.16)
-                    .overlay(
-                        Circle().fill(Color.white).frame(width: w * 0.03, height: w * 0.03)
-                            .offset(x: -w * 0.015, y: -h * 0.015)
-                    )
-                
-                // Smile and midline
-                Path { path in
-                    path.move(to: CGPoint(x: w * 0.5, y: h * 0.39))
-                    path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.52))
-                    
-                    path.addArc(center: CGPoint(x: w * 0.5, y: h * 0.36),
-                                radius: w * 0.18,
-                                startAngle: .degrees(45),
-                                endAngle: .degrees(135),
-                                clockwise: false)
-                }
-                .stroke(Color.black, lineWidth: w * 0.018)
-                
-                // Whiskers
-                Path { path in
-                    // Left whiskers
-                    path.move(to: CGPoint(x: w * 0.36, y: h * 0.33))
-                    path.addLine(to: CGPoint(x: w * 0.22, y: h * 0.30))
-                    
-                    path.move(to: CGPoint(x: w * 0.36, y: h * 0.38))
-                    path.addLine(to: CGPoint(x: w * 0.20, y: h * 0.38))
-                    
-                    path.move(to: CGPoint(x: w * 0.36, y: h * 0.43))
-                    path.addLine(to: CGPoint(x: w * 0.22, y: h * 0.46))
-                    
-                    // Right whiskers
-                    path.move(to: CGPoint(x: w * 0.64, y: h * 0.33))
-                    path.addLine(to: CGPoint(x: w * 0.78, y: h * 0.30))
-                    
-                    path.move(to: CGPoint(x: w * 0.64, y: h * 0.38))
-                    path.addLine(to: CGPoint(x: w * 0.80, y: h * 0.38))
-                    
-                    path.move(to: CGPoint(x: w * 0.64, y: h * 0.43))
-                    path.addLine(to: CGPoint(x: w * 0.78, y: h * 0.46))
-                }
-                .stroke(Color.black, lineWidth: w * 0.012)
-                
-                // Collar and bell
-                VStack(spacing: 0) {
-                    Capsule()
-                        .fill(Color.red)
-                        .frame(width: w * 0.48, height: h * 0.05)
-                        .offset(y: h * 0.05)
-                    
-                    ZStack {
-                        Circle().fill(Color(red: 0.98, green: 0.85, blue: 0.1))
-                            .overlay(Circle().stroke(Color.black, lineWidth: w * 0.01))
-                        Rectangle().fill(Color.black).frame(width: w * 0.07, height: h * 0.015)
-                            .offset(y: -h * 0.005)
-                        Circle().fill(Color.black).frame(width: w * 0.02, height: w * 0.02)
-                            .offset(y: h * 0.008)
-                    }
-                    .frame(width: w * 0.12, height: w * 0.12)
-                    .offset(y: h * 0.035)
-                }
+        Group {
+            if let nsImage = loadDoraemonImage() {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(DoraemonClipShape())
+            } else {
+                DoraemonClipShape()
+                    .fill(Color.blue.opacity(0.8))
+                    .frame(width: size, height: size)
             }
-            .frame(width: w, height: h)
         }
+    }
+
+    private func loadDoraemonImage() -> NSImage? {
+        if let url = Bundle.main.url(forResource: "doraemon", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            return img
+        }
+        if let img = NSImage(named: "doraemon") {
+            return img
+        }
+        let fallbacks = [
+            "Resources/doraemon.png",
+            "../Resources/doraemon.png",
+            "./doraemon.png",
+            "/Users/sunqilei/Documents/GitHub/Personal/AIQuotaWidget/Resources/doraemon.png"
+        ]
+        for path in fallbacks {
+            if FileManager.default.fileExists(atPath: path),
+               let img = NSImage(contentsOfFile: path) {
+                return img
+            }
+        }
+        return nil
+    }
+}
+
+struct DoraemonClipShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        return WaterBallView.silhouettePath(for: .doraemon, in: rect)
     }
 }
