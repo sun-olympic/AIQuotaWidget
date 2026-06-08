@@ -69,6 +69,7 @@ final class TelemetryService {
         let eventParams: [String: Any] = [
             "engagement_time_msec": durationMsec,
             "user_name": userName,
+            "device_id": settings.telemetryInstallationId,
             "app_version": "1.0.5"
         ]
         let event: [String: Any] = [
