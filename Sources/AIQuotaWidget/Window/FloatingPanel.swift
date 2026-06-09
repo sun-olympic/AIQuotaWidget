@@ -1,18 +1,17 @@
 import AppKit
 
-/// 无边框、nonactivating、不抢焦点的悬浮面板。
-final class FloatingPanel: NSPanel {
+/// 无边框、透明背景的悬浮窗口。
+final class FloatingPanel: NSWindow {
 
     init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
+            styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
         let isTesting = NSClassFromString("XCTest") != nil
-        isFloatingPanel = isTesting
         level = isTesting ? .floating : .normal
         // 透明背景，由 SwiftUI/NSVisualEffectView 提供液态玻璃。
         backgroundColor = .clear
@@ -22,11 +21,10 @@ final class FloatingPanel: NSPanel {
         isMovableByWindowBackground = true
         // 全空间可见、不随窗口循环切换。
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        hidesOnDeactivate = false
         animationBehavior = .utilityWindow
     }
 
-    // 允许成为 key 窗口以便操作控件，但不会激活 App（nonactivatingPanel）。
+    // 允许成为 key 窗口以便操作控件。
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 

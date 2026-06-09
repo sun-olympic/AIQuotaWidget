@@ -86,9 +86,6 @@ struct ContentView: View {
             iconButton("arrow.clockwise", help: settings.t("action.refresh")) {
                 service.refreshNow()
             }
-            iconButton(settings.pinnedOnTop ? "pin.fill" : "pin", help: settings.t("action.pin")) {
-                settings.pinnedOnTop.toggle()
-            }
             iconButton("globe", help: settings.t("action.language")) {
                 settings.language = settings.language.toggled
             }
@@ -295,7 +292,6 @@ struct ContentView: View {
             Button(settings.t("action.refresh")) {
                 service.refreshNow()
             }
-            Toggle(settings.t("settings.pinned"), isOn: $settings.pinnedOnTop)
             Toggle(settings.t("settings.autoCollapse"), isOn: $settings.autoCollapse)
             Divider()
             Button(settings.t("action.settings")) {

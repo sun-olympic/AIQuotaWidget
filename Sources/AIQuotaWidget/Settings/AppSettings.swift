@@ -9,7 +9,6 @@ final class AppSettings: ObservableObject {
         static let language = "settings.language"
         static let refreshInterval = "settings.refreshInterval"
         static let waveEnabled = "settings.waveEnabled"
-        static let pinnedOnTop = "settings.pinnedOnTop"
         static let windowFrame = "settings.windowFrame"
         static let selectedTab = "settings.selectedTab"
         static let enabledTabs = "settings.enabledTabs"
@@ -37,10 +36,6 @@ final class AppSettings: ObservableObject {
 
     @Published var waveEnabled: Bool {
         didSet { defaults.set(waveEnabled, forKey: Key.waveEnabled) }
-    }
-
-    @Published var pinnedOnTop: Bool {
-        didSet { defaults.set(pinnedOnTop, forKey: Key.pinnedOnTop) }
     }
 
     @Published var selectedTab: ProductTab {
@@ -108,7 +103,6 @@ final class AppSettings: ObservableObject {
         self.refreshInterval = storedInterval > 0 ? storedInterval : 60
 
         self.waveEnabled = defaults.object(forKey: Key.waveEnabled) as? Bool ?? true
-        self.pinnedOnTop = defaults.object(forKey: Key.pinnedOnTop) as? Bool ?? true
         self.coarseModelGrouping = defaults.object(forKey: Key.coarseModelGrouping) as? Bool ?? true
         self.autoCollapse = defaults.object(forKey: Key.autoCollapse) as? Bool ?? true
         

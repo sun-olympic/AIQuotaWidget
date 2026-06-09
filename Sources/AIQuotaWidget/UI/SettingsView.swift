@@ -39,7 +39,6 @@ struct SettingsView: View {
                 }
 
                 Toggle(settings.t("settings.wave"), isOn: $settings.waveEnabled)
-                Toggle(settings.t("settings.pinned"), isOn: $settings.pinnedOnTop)
                 if settings.enabledTabs.contains(.antigravity) {
                     Toggle(settings.t("settings.coarseModelGrouping"), isOn: $settings.coarseModelGrouping)
                 }

@@ -57,13 +57,6 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         panel.contentView = hosting
         panel.delegate = self
 
-        applyPinState(settings.pinnedOnTop)
-
-        // 置顶开关变化即时生效。
-        settings.$pinnedOnTop
-            .sink { [weak self] pinned in self?.applyPinState(pinned) }
-            .store(in: &cancellables)
-
         // Observe settings changes and state changes to update window size
         var publishers = [
             settings.$selectedTab.map { _ in () }.eraseToAnyPublisher(),
@@ -84,17 +77,6 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
 
     func show() {
         panel.orderFrontRegardless()
-    }
-
-    private func applyPinState(_ pinned: Bool) {
-        let isTesting = NSClassFromString("XCTest") != nil
-        if isTesting {
-            panel.isFloatingPanel = true
-            panel.level = .floating
-        } else {
-            panel.isFloatingPanel = pinned
-            panel.level = pinned ? .floating : .normal
-        }
     }
 
     private func recalculateWindowSize() {

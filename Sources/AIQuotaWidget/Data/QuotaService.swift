@@ -100,7 +100,10 @@ final class QuotaService: ObservableObject {
 
     /// 手动刷新：立即刷新当前可见 Tab 并重置定时器。
     func refreshNow() {
-        refresh(settings.selectedTab)
+        Task {
+            await AntigravityCache.shared.clear()
+            refresh(settings.selectedTab)
+        }
         rescheduleTimer()
     }
 
