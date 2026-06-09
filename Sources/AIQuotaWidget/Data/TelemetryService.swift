@@ -35,7 +35,7 @@ final class TelemetryService {
         self.timer = timer
 
         // 启动时立即发送一次初始心跳
-        sendHeartbeat()
+        sendHeartbeat(force: true)
     }
 
     @MainActor
@@ -46,7 +46,7 @@ final class TelemetryService {
     }
 
     @MainActor
-    private func sendHeartbeat() {
+    private func sendHeartbeat(force: Bool = false) {
         guard let settings = settings else { return }
 
         let now = Date()
@@ -54,8 +54,7 @@ final class TelemetryService {
         lastHeartbeatTime = now
 
         // 限制单次心跳的最大上报时长为 90 秒，规避休眠后唤醒造成的超大时长突刺
-        let durationToSend = min(duration, 90)
-        guard durationToSend >= 1 else { return }
+        guard let durationToSend = Self.durationToSend(duration, force: force) else { return }
 
         // 获取用户名（优先获取绑定的邮箱，否则 fallback 到 macOS 用户名）
         var userName = NSUserName()
@@ -94,6 +93,15 @@ final class TelemetryService {
             // 静默失败，不打扰用户
         }
         task.resume()
+    }
+
+    nonisolated static func durationToSend(_ duration: TimeInterval, force: Bool = false) -> TimeInterval? {
+        let clamped = min(duration, 90)
+        if force {
+            return max(1, clamped)
+        }
+        guard clamped >= 1 else { return nil }
+        return clamped
     }
 
     private func getCursorEmail() -> String? {

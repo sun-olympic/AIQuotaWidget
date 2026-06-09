@@ -2,6 +2,22 @@ import XCTest
 @testable import AIQuotaWidget
 
 final class AntigravityNormalizerTests: XCTestCase {
+    struct StubAntigravitySource: AntigravityRawDataSource {
+        let rawData: AntigravityRawData?
+        let error: Error?
+
+        init(rawData: AntigravityRawData? = nil, error: Error? = nil) {
+            self.rawData = rawData
+            self.error = error
+        }
+
+        func fetchRawData() async throws -> AntigravityRawData? {
+            if let error = error {
+                throw error
+            }
+            return rawData
+        }
+    }
 
     func testDefaultModelIsMainDimension() throws {
         let models = [
@@ -137,6 +153,46 @@ final class AntigravityNormalizerTests: XCTestCase {
         await AntigravityCache.shared.clear()
     }
 
+    func testProviderPrefersLocalSourceOverCloudFallback() async throws {
+        await AntigravityCache.shared.clear()
+        let localData = AntigravityRawData(
+            models: [.init(id: "local", displayName: "Local Model", remainingFraction: 0.8, resetAt: nil, isExhausted: false)],
+            defaultModelId: "local"
+        )
+        let cloudData = AntigravityRawData(
+            models: [.init(id: "cloud", displayName: "Cloud Model", remainingFraction: 0.2, resetAt: nil, isExhausted: false)],
+            defaultModelId: "cloud"
+        )
+
+        let provider = AntigravityProvider(
+            localSource: StubAntigravitySource(rawData: localData),
+            cloudSource: StubAntigravitySource(rawData: cloudData)
+        )
+
+        let snapshot = try await provider.fetch()
+        XCTAssertEqual(snapshot.activeAntigravityModelId, "local")
+        XCTAssertEqual(snapshot.remainingPercent, 80, accuracy: 0.001)
+        await AntigravityCache.shared.clear()
+    }
+
+    func testProviderFallsBackToCloudWhenLocalSourceHasNoData() async throws {
+        await AntigravityCache.shared.clear()
+        let cloudData = AntigravityRawData(
+            models: [.init(id: "cloud", displayName: "Cloud Model", remainingFraction: 0.45, resetAt: nil, isExhausted: false)],
+            defaultModelId: "cloud"
+        )
+
+        let provider = AntigravityProvider(
+            localSource: StubAntigravitySource(),
+            cloudSource: StubAntigravitySource(rawData: cloudData)
+        )
+
+        let snapshot = try await provider.fetch()
+        XCTAssertEqual(snapshot.activeAntigravityModelId, "cloud")
+        XCTAssertEqual(snapshot.remainingPercent, 45, accuracy: 0.001)
+        await AntigravityCache.shared.clear()
+    }
+
     func testCoarseGroupingLogic() throws {
         let models = [
             AntigravityNormalizer.Model(id: "g1", displayName: "Gemini 2.5 Flash", remainingFraction: 1.0, resetAt: nil, isExhausted: false),
@@ -236,5 +292,10 @@ final class AntigravityNormalizerTests: XCTestCase {
         XCTAssertEqual(settings.customCodexPath, "")
         XCTAssertFalse(settings.telemetryInstallationId.isEmpty)
     }
-}
 
+    func testTelemetryInitialHeartbeatDurationIsForced() {
+        XCTAssertNil(TelemetryService.durationToSend(0.2))
+        XCTAssertEqual(TelemetryService.durationToSend(0.2, force: true), 1)
+        XCTAssertEqual(TelemetryService.durationToSend(120), 90)
+    }
+}

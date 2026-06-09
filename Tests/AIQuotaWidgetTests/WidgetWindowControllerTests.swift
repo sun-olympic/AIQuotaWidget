@@ -260,6 +260,70 @@ final class WidgetWindowControllerTests: XCTestCase {
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }
 
+    @MainActor
+    func testQuotaServiceIgnoresStaleRefreshResult() async throws {
+        let suiteName = "test.AIQuotaWidget.QuotaService.StaleRefresh"
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Failed to create temporary UserDefaults")
+            return
+        }
+
+        let settings = AppSettings(defaults: defaults)
+        settings.enabledTabs = [.antigravity]
+        settings.selectedTab = .antigravity
+
+        var fetchCount = 0
+        let service = QuotaService(settings: settings) { _ in
+            fetchCount += 1
+            let currentFetch = fetchCount
+            if currentFetch == 1 {
+                await withCheckedContinuation { continuation in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        continuation.resume()
+                    }
+                }
+            } else {
+                await withCheckedContinuation { continuation in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                        continuation.resume()
+                    }
+                }
+            }
+            return QuotaSnapshot(
+                remainingPercent: currentFetch == 1 ? 10 : 80,
+                primaryText: currentFetch == 1 ? "stale" : "fresh",
+                mode: .unknown,
+                ledStatus: currentFetch == 1 ? .yellow : .green
+            )
+        }
+
+        service.start()
+        settings.coarseModelGrouping.toggle()
+
+        let freshLoaded = expectation(description: "Fresh refresh wins")
+        var cancellables = Set<AnyCancellable>()
+        service.$antigravityState
+            .sink { state in
+                if case .loaded(let snapshot) = state, snapshot.primaryText == "fresh" {
+                    freshLoaded.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        await fulfillment(of: [freshLoaded], timeout: 1.0)
+        try await Task.sleep(nanoseconds: 250_000_000)
+
+        guard case .loaded(let snapshot) = service.antigravityState else {
+            XCTFail("Expected loaded state")
+            return
+        }
+        XCTAssertEqual(snapshot.primaryText, "fresh")
+
+        service.stop()
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
     func testAutoCollapsePersistence() throws {
         let suiteName = "test.AIQuotaWidget.AppSettings.AutoCollapse"
         UserDefaults.standard.removePersistentDomain(forName: suiteName)

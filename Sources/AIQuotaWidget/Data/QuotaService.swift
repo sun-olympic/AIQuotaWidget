@@ -23,17 +23,22 @@ final class QuotaService: ObservableObject {
 
     private let settings: AppSettings
     private let credentialStore: CredentialStore
+    private let fetchSnapshotOverride: ((ProductTab) async throws -> QuotaSnapshot)?
     private var timer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var tasks: [ProductTab: Task<Void, Never>] = [:]
+    private var refreshIDs: [ProductTab: UUID] = [:]
     /// 启动后是否还允许把默认 Tab 自动落到一个可用来源（用户手动切换后、或首轮刷新结束后禁用）。
     private var autoSelectArmed = true
     /// 首轮尚未返回的来源；全部返回后定格默认 Tab，避免后续瞬时失效误切。
     private var initialPending: Set<ProductTab> = []
 
-    init(settings: AppSettings, credentialStore: CredentialStore = CredentialStore()) {
+    init(settings: AppSettings,
+         credentialStore: CredentialStore = CredentialStore(),
+         fetchSnapshotOverride: ((ProductTab) async throws -> QuotaSnapshot)? = nil) {
         self.settings = settings
         self.credentialStore = credentialStore
+        self.fetchSnapshotOverride = fetchSnapshotOverride
 
         settings.$refreshInterval
             .dropFirst()
@@ -96,6 +101,8 @@ final class QuotaService: ObservableObject {
         timer?.invalidate()
         timer = nil
         tasks.values.forEach { $0.cancel() }
+        tasks.removeAll()
+        refreshIDs.removeAll()
     }
 
     /// 手动刷新：立即刷新当前可见 Tab 并重置定时器。
@@ -119,10 +126,16 @@ final class QuotaService: ObservableObject {
     }
 
     private func refresh(_ tab: ProductTab) {
+        let refreshID = UUID()
+        refreshIDs[tab] = refreshID
         tasks[tab]?.cancel()
         tasks[tab] = Task { [weak self] in
-            await self?.performRefresh(for: tab)
+            await self?.performRefresh(for: tab, refreshID: refreshID)
         }
+    }
+
+    private func isCurrentRefresh(_ refreshID: UUID, for tab: ProductTab) -> Bool {
+        refreshIDs[tab] == refreshID && !Task.isCancelled
     }
 
     private func setState(_ state: WidgetState, for tab: ProductTab) {
@@ -155,31 +168,46 @@ final class QuotaService: ObservableObject {
         }
     }
 
-    private func performRefresh(for tab: ProductTab) async {
+    private func performRefresh(for tab: ProductTab, refreshID: UUID) async {
         if settings.selectedTab == tab { isRefreshing = true }
-        defer { if settings.selectedTab == tab { isRefreshing = false } }
+        defer {
+            if isCurrentRefresh(refreshID, for: tab) {
+                tasks[tab] = nil
+                refreshIDs[tab] = nil
+                if settings.selectedTab == tab { isRefreshing = false }
+            }
+        }
 
         do {
             let snapshot: QuotaSnapshot
-            switch tab {
-            case .cursor:
-                snapshot = try await fetchCursor()
-            case .codex:
-                snapshot = try await CodexProvider(settings: settings).fetch()
-            case .antigravity:
-                snapshot = try await AntigravityProvider(
-                    defaultModelOverride: settings.antigravityDefaultModelId,
-                    coarseModelGrouping: settings.coarseModelGrouping
-                ).fetch()
+            if let fetchSnapshotOverride {
+                snapshot = try await fetchSnapshotOverride(tab)
+            } else {
+                switch tab {
+                case .cursor:
+                    snapshot = try await fetchCursor()
+                case .codex:
+                    snapshot = try await CodexProvider(settings: settings).fetch()
+                case .antigravity:
+                    snapshot = try await AntigravityProvider(
+                        defaultModelOverride: settings.antigravityDefaultModelId,
+                        coarseModelGrouping: settings.coarseModelGrouping
+                    ).fetch()
+                }
             }
+            guard isCurrentRefresh(refreshID, for: tab) else { return }
             setState(.loaded(snapshot), for: tab)
         } catch QuotaError.needsReLogin {
+            guard isCurrentRefresh(refreshID, for: tab) else { return }
             setState(.needsReLogin, for: tab)
         } catch QuotaError.notInstalled {
+            guard isCurrentRefresh(refreshID, for: tab) else { return }
             setState(.notInstalled, for: tab)
         } catch QuotaError.notLoggedIn {
+            guard isCurrentRefresh(refreshID, for: tab) else { return }
             setState(.notLoggedIn, for: tab)
         } catch {
+            guard isCurrentRefresh(refreshID, for: tab) else { return }
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             setState(.error(Redaction.redact(message)), for: tab)
         }

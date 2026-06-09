@@ -212,6 +212,40 @@ final class CursorBillingModeTests: XCTestCase {
         XCTAssertEqual(snapshot.planName, "Ultra")
     }
 
+    func testCursorProviderDoesNotFallbackToLegacyOnUsageBasedDecodeError() async throws {
+        let legacyJson = """
+        {
+            "gpt-4": {
+                "numRequests": 10,
+                "maxRequestUsage": 100
+            }
+        }
+        """
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            if request.url?.absoluteString.contains("GetCurrentPeriodUsage") == true {
+                return (response, Data("not json".utf8))
+            }
+            return (response, Data(legacyJson.utf8))
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = AuthorizedHTTPClient(accessToken: "test-token", refreshToken: nil, session: session)
+        let provider = CursorProvider(client: client, membershipType: "pro", billingMode: .auto)
+
+        do {
+            _ = try await provider.fetch()
+            XCTFail("Expected usage-based decoding error to propagate")
+        } catch QuotaError.decoding(let message) {
+            XCTAssertEqual(message, "usage-based decode failed")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     @MainActor
     func testCollapsedTooltipTextCursor() {
         let settings = AppSettings()

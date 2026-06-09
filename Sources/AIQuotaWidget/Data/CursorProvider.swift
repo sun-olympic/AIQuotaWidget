@@ -20,8 +20,8 @@ struct CursorProvider: QuotaProvider {
             fallbackPlanName: planName,
             billingMode: billingMode
         )
-        // try? 展平 Optional：抛错或返回 nil（非 usage-based）都回退 legacy。
-        if let snapshot = try? await usageBased.fetchActive() {
+        // 只有接口明确返回“当前账号未启用 usage-based”时才回退 legacy；其它错误继续暴露。
+        if let snapshot = try await usageBased.fetchActive() {
             return snapshot
         }
         // 回退 legacy。
