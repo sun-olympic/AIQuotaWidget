@@ -68,7 +68,6 @@ enum Strings {
         "settings.customCodexPathPlaceholder": [.english: "Path to codex binary or Codex.app", .chinese: "指向 codex 二进制或 Codex.app"],
         "settings.theme": [.english: "Theme Style", .chinese: "外观主题"],
         "theme.waterBall": [.english: "Classic Water Ball", .chinese: "经典水球"],
-        "theme.doraemon": [.english: "Doraemon", .chinese: "哆啦A梦"],
         "action.refresh": [.english: "Refresh", .chinese: "刷新"],
         "action.pin": [.english: "Pin on top", .chinese: "置顶"],
         "action.settings": [.english: "Settings", .chinese: "设置"],

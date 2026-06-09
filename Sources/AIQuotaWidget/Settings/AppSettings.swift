@@ -178,7 +178,6 @@ final class AppSettings: ObservableObject {
 /// 悬浮球的外观主题。
 enum WidgetTheme: String, CaseIterable, Identifiable {
     case waterBall = "waterBall"
-    case doraemon = "doraemon"
     
     var id: String { rawValue }
     

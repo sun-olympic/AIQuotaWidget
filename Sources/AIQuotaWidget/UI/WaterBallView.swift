@@ -1,8 +1,6 @@
 import SwiftUI
-import AppKit
 
-/// 角色主题与水球视图：水位高度对应剩余百分比，球心显示「P% Left」或请求次数。
-/// 除经典水球外，哆啦A梦全身角色主题的外轮廓以及水位裁剪皆使用其特有的全身形象外形。
+/// 水球视图：水位高度对应剩余百分比，球心显示「P% Left」或请求次数。
 struct WaterBallView: View {
     /// 剩余百分比 0–100。
     let percent: Double
@@ -31,9 +29,6 @@ struct WaterBallView: View {
 
     var body: some View {
         ZStack {
-            // Underlay theme background
-            ThemeBackgroundView(theme: theme, size: size)
-            
             if waveEnabled {
                 TimelineView(.animation) { timeline in
                     let phase = timeline.date.timeIntervalSinceReferenceDate
@@ -57,7 +52,7 @@ struct WaterBallView: View {
 
     private var label: some View {
         let hasOverride = centerTextOverride != nil
-        let mainFontSize = hasOverride ? (size * (13.0 / 96.0)) : (theme == .waterBall ? (size * (22.0 / 96.0)) : (size * (17.0 / 96.0)))
+        let mainFontSize = hasOverride ? (size * (17.0 / 96.0)) : (size * (22.0 / 96.0))
         return VStack(spacing: 0) {
             Text(centerTextOverride ?? "\(Int(percent.rounded()))%")
                 .font(.system(size: mainFontSize, weight: .bold, design: .rounded))
@@ -66,18 +61,11 @@ struct WaterBallView: View {
                 .minimumScaleFactor(0.7)
             if !hasOverride {
                 Text(leftLabel)
-                    .font(.system(size: theme == .waterBall ? (size * (10.0 / 96.0)) : (size * (9.0 / 96.0)), weight: .medium))
+                    .font(.system(size: size * (10.0 / 96.0), weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
         }
-        .padding(.horizontal, theme == .waterBall ? 0 : size * 0.05)
-        .padding(.vertical, theme == .waterBall ? 0 : size * 0.03)
-        .background(
-            theme == .waterBall ? Color.clear : Color.black.opacity(0.35),
-            in: Capsule()
-        )
         .shadow(color: .black.opacity(0.4), radius: 1, y: 0.5)
-        .offset(y: theme == .waterBall ? 0 : -size * 0.15)
     }
 
     private func waterCanvas(phase: Double, animated: Bool) -> some View {
@@ -87,21 +75,14 @@ struct WaterBallView: View {
             let containerYStart: CGFloat = 0
             
             context.clip(to: clipPath)
-
-            // 球体底色（经典水球以及各个主题都填充其专属底色/阴影）。
-            if theme == .waterBall {
-                context.fill(clipPath, with: .color(color.opacity(0.15)))
-            } else {
-                context.fill(clipPath, with: .color(color.opacity(0.08)))
-            }
+            context.fill(clipPath, with: .color(color.opacity(0.15)))
 
             let clamped = min(100, max(0, percent))
             let level = containerYStart + (1 - clamped / 100) * containerHeight
             let amplitude = animated ? max(2.0, containerHeight * 0.035) : 0
 
-            // 两层正弦波叠加，如果是角色主题则微调透明度以保留背景清晰度。
-            let op1 = theme == .waterBall ? 0.35 : 0.28
-            let op2 = theme == .waterBall ? 0.55 : 0.42
+            let op1 = 0.35
+            let op2 = 0.55
 
             context.fill(wavePath(size: size, level: level, amplitude: amplitude,
                                    phase: phase * 1.6, wavelength: size.width * 1.1),
@@ -132,105 +113,8 @@ struct WaterBallView: View {
 
     /// 根据主题类型获取全身形象的外形 Path 轮廓。
     static func silhouettePath(for theme: WidgetTheme, in rect: CGRect) -> Path {
-        let w = rect.width
-        let h = rect.height
         var path = Path()
-
-        switch theme {
-        case .waterBall:
-            path.addEllipse(in: rect)
-            
-        case .doraemon:
-            let ox = rect.origin.x
-            let oy = rect.origin.y
-            
-            // Head
-            let headRect = CGRect(x: ox + w * 0.18, y: oy + h * 0.08, width: w * 0.64, height: h * 0.48)
-            path.addPath(Path(ellipseIn: headRect))
-            
-            // Body / Torso
-            let bodyRect = CGRect(x: ox + w * 0.22, y: oy + h * 0.52, width: w * 0.56, height: h * 0.36)
-            path.addPath(Path(roundedRect: bodyRect, cornerRadius: w * 0.12))
-            
-            // Left Hand
-            let leftHandRect = CGRect(x: ox + w * 0.12, y: oy + h * 0.56, width: w * 0.12, height: h * 0.12)
-            path.addPath(Path(ellipseIn: leftHandRect))
-            
-            // Right Hand
-            let rightHandRect = CGRect(x: ox + w * 0.76, y: oy + h * 0.56, width: w * 0.12, height: h * 0.12)
-            path.addPath(Path(ellipseIn: rightHandRect))
-            
-            // Left Foot
-            let leftFootRect = CGRect(x: ox + w * 0.20, y: oy + h * 0.84, width: w * 0.24, height: h * 0.12)
-            path.addPath(Path(ellipseIn: leftFootRect))
-            
-            // Right Foot
-            let rightFootRect = CGRect(x: ox + w * 0.56, y: oy + h * 0.84, width: w * 0.24, height: h * 0.12)
-            path.addPath(Path(ellipseIn: rightFootRect))
-        }
-
+        path.addEllipse(in: rect)
         return path
-    }
-}
-
-/// 绘制各个角色主题的背景视图。
-struct ThemeBackgroundView: View {
-    let theme: WidgetTheme
-    let size: CGFloat
-    
-    var body: some View {
-        ZStack {
-            switch theme {
-            case .waterBall:
-                EmptyView()
-            case .doraemon:
-                doraemonView
-            }
-        }
-    }
-    
-    private var doraemonView: some View {
-        Group {
-            if let nsImage = loadDoraemonImage() {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: size, height: size)
-                    .clipShape(DoraemonClipShape())
-            } else {
-                DoraemonClipShape()
-                    .fill(Color.blue.opacity(0.8))
-                    .frame(width: size, height: size)
-            }
-        }
-    }
-
-    private func loadDoraemonImage() -> NSImage? {
-        if let url = Bundle.main.url(forResource: "doraemon", withExtension: "png"),
-           let img = NSImage(contentsOf: url) {
-            return img
-        }
-        if let img = NSImage(named: "doraemon") {
-            return img
-        }
-        let fallbacks = [
-            "Resources/doraemon.png",
-            "../Resources/doraemon.png",
-            "./doraemon.png",
-            "/Users/sunqilei/Documents/GitHub/Personal/AIQuotaWidget/Resources/doraemon.png"
-        ]
-        for path in fallbacks {
-            if FileManager.default.fileExists(atPath: path),
-               let img = NSImage(contentsOfFile: path) {
-                return img
-            }
-        }
-        return nil
-    }
-}
-
-struct DoraemonClipShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        return WaterBallView.silhouettePath(for: .doraemon, in: rect)
     }
 }

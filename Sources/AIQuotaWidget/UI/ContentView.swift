@@ -267,7 +267,7 @@ struct ContentView: View {
 
     private var collapsedView: some View {
         let data = collapsedWaterBallData
-        let size: CGFloat = settings.widgetTheme == .waterBall ? 96 : 120
+        let size: CGFloat = 96
         return WaterBallView(
             percent: data.percent,
             leftLabel: data.leftLabel,
@@ -351,13 +351,7 @@ struct ContentView: View {
                     }
                 }
             }
-            Menu(settings.t("settings.theme")) {
-                ForEach(WidgetTheme.allCases) { theme in
-                    Button(settings.t(theme.localizationKey)) {
-                        settings.widgetTheme = theme
-                    }
-                }
-            }
+
             Button(settings.t("action.quit")) {
                 NSApplication.shared.terminate(nil)
             }
@@ -420,8 +414,7 @@ struct WidgetClipShape: Shape {
     func path(in rect: CGRect) -> Path {
         if isCollapsed {
             // 折叠状态下，如果为经典水球，则大小为 96x96，居中放置在 120x120 窗口中（留白 12pt）
-            // 如果为角色主题，则使用 120x120 以使角色最大化展示（角色路径本身已包含适当留白）
-            let size: CGFloat = theme == .waterBall ? 96 : 120
+            let size: CGFloat = 96
             let padding = (rect.width - size) / 2
             let ballRect = CGRect(x: padding, y: padding, width: size, height: size)
             return WaterBallView.silhouettePath(for: theme, in: ballRect)
