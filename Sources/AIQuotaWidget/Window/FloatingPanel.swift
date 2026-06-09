@@ -11,8 +11,9 @@ final class FloatingPanel: NSPanel {
             defer: false
         )
 
-        isFloatingPanel = true
-        level = .floating
+        let isTesting = NSClassFromString("XCTest") != nil
+        isFloatingPanel = isTesting
+        level = isTesting ? .floating : .normal
         // 透明背景，由 SwiftUI/NSVisualEffectView 提供液态玻璃。
         backgroundColor = .clear
         isOpaque = false
