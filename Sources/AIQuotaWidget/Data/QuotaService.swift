@@ -18,6 +18,7 @@ final class QuotaService: ObservableObject {
     @Published private(set) var cursorState: WidgetState = .loading
     @Published private(set) var codexState: WidgetState = .loading
     @Published private(set) var antigravityState: WidgetState = .loading
+    @Published private(set) var claudecodeState: WidgetState = .loading
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastUpdated: Date?
 
@@ -87,6 +88,7 @@ final class QuotaService: ObservableObject {
         case .cursor: return cursorState
         case .codex: return codexState
         case .antigravity: return antigravityState
+        case .claudecode: return claudecodeState
         }
     }
 
@@ -143,6 +145,7 @@ final class QuotaService: ObservableObject {
         case .cursor: cursorState = state
         case .codex: codexState = state
         case .antigravity: antigravityState = state
+        case .claudecode: claudecodeState = state
         }
         if case .loaded = state { lastUpdated = Date() }
 
@@ -193,6 +196,8 @@ final class QuotaService: ObservableObject {
                         defaultModelOverride: settings.antigravityDefaultModelId,
                         coarseModelGrouping: settings.coarseModelGrouping
                     ).fetch()
+                case .claudecode:
+                    snapshot = try await ClaudeCodeProvider().fetch()
                 }
             }
             guard isCurrentRefresh(refreshID, for: tab) else { return }

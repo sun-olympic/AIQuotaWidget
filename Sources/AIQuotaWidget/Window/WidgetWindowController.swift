@@ -32,6 +32,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
                 case .cursor: state = service.cursorState
                 case .codex: state = service.codexState
                 case .antigravity: state = service.antigravityState
+                case .claudecode: state = service.claudecodeState
                 }
                 if case .loaded(let snapshot) = state,
                    let windows = snapshot.secondaryWindows,
@@ -66,6 +67,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
             publishers.append(service.$cursorState.map { _ in () }.eraseToAnyPublisher())
             publishers.append(service.$codexState.map { _ in () }.eraseToAnyPublisher())
             publishers.append(service.$antigravityState.map { _ in () }.eraseToAnyPublisher())
+            publishers.append(service.$claudecodeState.map { _ in () }.eraseToAnyPublisher())
         }
         
         Publishers.MergeMany(publishers)
@@ -92,6 +94,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
                 case .cursor: state = service.cursorState
                 case .codex: state = service.codexState
                 case .antigravity: state = service.antigravityState
+                case .claudecode: state = service.claudecodeState
                 }
                 if case .loaded(let snapshot) = state,
                    let windows = snapshot.secondaryWindows,

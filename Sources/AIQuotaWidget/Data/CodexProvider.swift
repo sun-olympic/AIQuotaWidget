@@ -20,9 +20,10 @@ struct CodexProvider: QuotaProvider {
         }
 
         // 2.2/2.3 子进程取数（在后台线程执行，带超时）。
-        let rateLimits = try await CodexAppServer.readRateLimits(executable: executable)
+        let rawResult = try await CodexAppServer.readRateLimitsRaw(executable: executable)
 
         // 2.4 归一化。
+        let rateLimits = JSONDigger(CodexAppServer.extractRateLimits(rawResult))
         let primary = rateLimits.dict("primary")
         let secondary = rateLimits.dict("secondary")
 
@@ -30,12 +31,17 @@ struct CodexProvider: QuotaProvider {
             throw QuotaError.decoding("codex rateLimits missing primary window")
         }
 
+        let extraBuckets = Self.parseExtraBuckets(rawResult, mainLimitId: rateLimits.string("limitId"))
+
         let input = CodexNormalizer.Input(
             primaryUsedPercent: primaryUsed,
             primaryResetAt: windowReset(primary),
+            primaryWindowDurationMins: windowDurationMins(primary),
             secondaryUsedPercent: windowUsedPercent(secondary),
             secondaryResetAt: windowReset(secondary),
-            planType: rateLimits.string("planType") ?? rateLimits.string("plan_type") ?? rateLimits.string("plan")
+            secondaryWindowDurationMins: windowDurationMins(secondary),
+            planType: rateLimits.string("planType") ?? rateLimits.string("plan_type") ?? rateLimits.string("plan"),
+            extraBuckets: extraBuckets
         )
         return CodexNormalizer.make(input)
     }
@@ -44,16 +50,48 @@ struct CodexProvider: QuotaProvider {
         window?.double("usedPercent") ?? window?.double("used_percent")
     }
 
+    private func windowDurationMins(_ window: JSONDigger?) -> Int? {
+        window?.int("windowDurationMins") ?? window?.int("window_duration_mins")
+    }
+
     private func windowReset(_ window: JSONDigger?) -> Date? {
         guard let window = window else { return nil }
         if let abs = window.root["resetsAt"] ?? window.root["resets_at"] {
             return QuotaNormalizer.dateFromFlexible(abs)
         }
-        // 相对秒数兜底。
         if let secs = window.double("resetsInSeconds") ?? window.double("resets_in_seconds") {
             return Date().addingTimeInterval(secs)
         }
         return nil
+    }
+
+    /// 从 `rateLimitsByLimitId` 中提取主 bucket 以外的额外限额。
+    private static func parseExtraBuckets(_ rawResult: [String: Any], mainLimitId: String?) -> [CodexNormalizer.ExtraBucket] {
+        let byId = (rawResult["rateLimitsByLimitId"] as? [String: Any])
+            ?? (rawResult["rate_limits_by_limit_id"] as? [String: Any])
+        guard let byId = byId else { return [] }
+        let mainId = mainLimitId ?? "codex"
+
+        var buckets: [CodexNormalizer.ExtraBucket] = []
+        for (key, value) in byId {
+            guard key != mainId, let dict = value as? [String: Any] else { continue }
+            let digger = JSONDigger(dict)
+            guard let primary = digger.dict("primary"),
+                  let used = primary.double("usedPercent") ?? primary.double("used_percent") else { continue }
+            let name = digger.string("limitName") ?? digger.string("limit_name") ?? key
+            buckets.append(CodexNormalizer.ExtraBucket(
+                name: name,
+                primaryUsedPercent: used,
+                primaryResetAt: {
+                    if let abs = primary.root["resetsAt"] ?? primary.root["resets_at"] {
+                        return QuotaNormalizer.dateFromFlexible(abs)
+                    }
+                    return nil
+                }(),
+                primaryWindowDurationMins: primary.int("windowDurationMins") ?? primary.int("window_duration_mins")
+            ))
+        }
+        return buckets.sorted { $0.name < $1.name }
     }
 }
 
@@ -106,12 +144,19 @@ enum CodexAppServer {
     }
 
     /// 后台线程跑阻塞式子进程交互，整体超时由看门狗强制结束进程。
+    /// 返回 `extractRateLimits` 后的主 bucket 字典（老接口，保留兼容）。
     static func readRateLimits(executable: String) async throws -> JSONDigger {
+        let raw = try await readRateLimitsRaw(executable: executable)
+        return JSONDigger(extractRateLimits(raw))
+    }
+
+    /// 返回 `account/rateLimits/read` 的完整 result 字典（含多 bucket）。
+    static func readRateLimitsRaw(executable: String) async throws -> [String: Any] {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     let dict = try runBlocking(executable: executable)
-                    continuation.resume(returning: JSONDigger(dict))
+                    continuation.resume(returning: dict)
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -150,29 +195,61 @@ enum CodexAppServer {
         send(["jsonrpc": "2.0", "id": 1, "method": CodexConfig.initializeMethod,
               "params": ["clientInfo": ["name": "CursorQuotaWidget", "version": "1.0"]]],
              to: stdin)
-        Thread.sleep(forTimeInterval: CodexConfig.handshakeDelay)
-        send(["jsonrpc": "2.0", "id": 2, "method": CodexConfig.rateLimitsMethod, "params": [:]],
-             to: stdin)
-
         let handle = stdout.fileHandleForReading
         let deadline = Date().addingTimeInterval(CodexConfig.timeout)
         var buffer = Data()
 
         while Date() < deadline {
-            let chunk = handle.availableData
-            if chunk.isEmpty { break }
-            buffer.append(chunk)
-            while let newlineIndex = buffer.firstIndex(of: 0x0A) {
-                let lineData = buffer.subdata(in: buffer.startIndex..<newlineIndex)
-                buffer.removeSubrange(buffer.startIndex...newlineIndex)
-                if let obj = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                   (obj["id"] as? Int) == 2,
-                   let result = obj["result"] as? [String: Any] {
-                    return extractRateLimits(result)
+            for obj in readAvailableMessages(from: handle, buffer: &buffer) {
+                if messageID(obj) == 1 {
+                    if let error = obj["error"] as? [String: Any] {
+                        throw QuotaError.decoding("codex initialize failed: \(error["message"] ?? "unknown")")
+                    }
+                    send(["jsonrpc": "2.0", "id": 2, "method": CodexConfig.rateLimitsMethod, "params": [:]],
+                         to: stdin)
+                    return try readRateLimitsResponse(from: handle, buffer: &buffer, deadline: deadline)
                 }
             }
         }
         throw QuotaError.timeout
+    }
+
+    /// 返回完整的 result 字典（不提取 bucket），由调用方决定是否 extractRateLimits。
+    private static func readRateLimitsResponse(
+        from handle: FileHandle,
+        buffer: inout Data,
+        deadline: Date
+    ) throws -> [String: Any] {
+        while Date() < deadline {
+            for obj in readAvailableMessages(from: handle, buffer: &buffer) {
+                guard messageID(obj) == 2 else { continue }
+                if let result = obj["result"] as? [String: Any] {
+                    return result
+                }
+                if let error = obj["error"] as? [String: Any] {
+                    throw QuotaError.decoding("codex rateLimits failed: \(error["message"] ?? "unknown")")
+                }
+            }
+        }
+        throw QuotaError.timeout
+    }
+
+    private static func readAvailableMessages(from handle: FileHandle, buffer: inout Data) -> [[String: Any]] {
+        let chunk = handle.availableData
+        guard !chunk.isEmpty else { return [] }
+        buffer.append(chunk)
+
+        var messages: [[String: Any]] = []
+        while let newlineIndex = buffer.firstIndex(of: 0x0A) {
+            let lineData = buffer.subdata(in: buffer.startIndex..<newlineIndex)
+            buffer.removeSubrange(buffer.startIndex...newlineIndex)
+            guard !lineData.isEmpty,
+                  let obj = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
+                continue
+            }
+            messages.append(obj)
+        }
+        return messages
     }
 
     private static func send(_ object: [String: Any], to pipe: Pipe) {
@@ -181,8 +258,23 @@ enum CodexAppServer {
         pipe.fileHandleForWriting.write(data)
     }
 
-    /// 返回可能将限额包在 `rateLimits` 下，做一层兼容。
-    private static func extractRateLimits(_ result: [String: Any]) -> [String: Any] {
+    static func messageID(_ message: [String: Any]) -> Int? {
+        if let id = message["id"] as? Int { return id }
+        if let id = message["id"] as? String { return Int(id) }
+        if let id = message["id"] as? NSNumber { return id.intValue }
+        return nil
+    }
+
+    /// 返回可能将限额包在 `rateLimits` 下，做一层兼容；新版还会按 `limit_id` 返回多 bucket。
+    static func extractRateLimits(_ result: [String: Any]) -> [String: Any] {
+        if let buckets = result["rateLimitsByLimitId"] as? [String: Any],
+           let codex = buckets["codex"] as? [String: Any] {
+            return codex
+        }
+        if let buckets = result["rate_limits_by_limit_id"] as? [String: Any],
+           let codex = buckets["codex"] as? [String: Any] {
+            return codex
+        }
         if let nested = result["rateLimits"] as? [String: Any] { return nested }
         if let nested = result["rate_limits"] as? [String: Any] { return nested }
         return result

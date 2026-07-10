@@ -43,8 +43,6 @@ enum CodexConfig {
     static let initializeMethod = "initialize"
     static let rateLimitsMethod = "account/rateLimits/read"
 
-    /// `initialize` 之后、发 rateLimits 之前的握手延迟，规避连接就绪前空响应。
-    static let handshakeDelay: TimeInterval = 0.6
     /// 整体取数超时，超时即结束子进程并转引导/错误态，避免阻塞。
     static let timeout: TimeInterval = 8
 
@@ -56,6 +54,7 @@ enum CodexConfig {
         "/opt/homebrew/bin",
         "/usr/local/bin",
         "/usr/bin",
+        "/Applications/ChatGPT.app/Contents/Resources",
         "/Applications/Codex.app/Contents/Resources"
     ]
 

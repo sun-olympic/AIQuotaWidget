@@ -192,6 +192,7 @@ enum ProductTab: String, CaseIterable, Identifiable {
     case cursor
     case codex
     case antigravity
+    case claudecode
 
     var id: String { rawValue }
 
@@ -201,4 +202,18 @@ enum ProductTab: String, CaseIterable, Identifiable {
     /// 主维度取值规则的本地化说明 key：
     /// Cursor=月额度 / Codex=5h 窗口 / Antigravity=默认模型。阈值统一复用 <10/<20/≥20。
     var mainDimensionKey: String { "dim.\(rawValue)" }
+
+    /// 看板跳转链接。
+    var dashboardURL: URL? {
+        switch self {
+        case .cursor:
+            return URL(string: "https://cursor.com/settings")
+        case .codex:
+            return URL(string: "https://github.com/settings/copilot")
+        case .antigravity:
+            return URL(string: "https://aistudio.google.com/")
+        case .claudecode:
+            return URL(string: "https://console.anthropic.com/settings/usage")
+        }
+    }
 }

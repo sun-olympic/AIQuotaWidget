@@ -86,8 +86,10 @@ struct ContentView: View {
             iconButton("arrow.clockwise", help: settings.t("action.refresh")) {
                 service.refreshNow()
             }
-            iconButton("globe", help: settings.t("action.language")) {
-                settings.language = settings.language.toggled
+            if let url = settings.selectedTab.dashboardURL {
+                iconButton("safari", help: settings.t("action.dashboard")) {
+                    NSWorkspace.shared.open(url)
+                }
             }
             iconButton("gearshape", help: settings.t("action.settings")) {
                 showSettings.toggle()
@@ -146,6 +148,7 @@ struct ContentView: View {
         case .cursor: return "state.notLoggedIn.hint"
         case .codex: return "codex.login.hint"
         case .antigravity: return "antigravity.login.hint"
+        case .claudecode: return "claudecode.login.hint"
         }
     }
 
@@ -258,6 +261,8 @@ struct ContentView: View {
             } else if let modelId = settings.antigravityDefaultModelId {
                 return "\(toolName) (\(modelId))"
             }
+            return toolName
+        case .claudecode:
             return toolName
         }
     }
