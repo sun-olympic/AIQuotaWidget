@@ -35,6 +35,12 @@ enum LocalPaths {
     }
 }
 
+/// Cursor 使用事件 API（与看板同一 gRPC 服务，复用 OAuth Bearer 鉴权）。
+enum CursorDashboardAPI {
+    static let getFilteredUsageEvents = "\(CursorAPI.host)/aiserver.v1.DashboardService/GetFilteredUsageEvents"
+    static let recentPageSize = 5
+}
+
 /// Codex 相关常量（逆向/实验性，`codex app-server` 标注 experimental，随版本可能变更）。
 enum CodexConfig {
     static let executableName = "codex"

@@ -207,7 +207,7 @@ enum ProductTab: String, CaseIterable, Identifiable {
     var dashboardURL: URL? {
         switch self {
         case .cursor:
-            return URL(string: "https://cursor.com/settings")
+            return URL(string: "https://cursor.com/dashboard/usage")
         case .codex:
             return URL(string: "https://chatgpt.com/codex/settings/usage")
         case .antigravity:

@@ -182,7 +182,7 @@ final class QuotaService: ObservableObject {
         }
 
         do {
-            let snapshot: QuotaSnapshot
+            var snapshot: QuotaSnapshot
             if let fetchSnapshotOverride {
                 snapshot = try await fetchSnapshotOverride(tab)
             } else {
@@ -191,6 +191,8 @@ final class QuotaService: ObservableObject {
                     snapshot = try await fetchCursor()
                 case .codex:
                     snapshot = try await CodexProvider(settings: settings).fetch()
+                    let codexRecent = Self.readCodexRecentTurns()
+                    if !codexRecent.isEmpty { snapshot.recentRequests = codexRecent }
                 case .antigravity:
                     snapshot = try await AntigravityProvider(
                         defaultModelOverride: settings.antigravityDefaultModelId,
@@ -234,7 +236,170 @@ final class QuotaService: ObservableObject {
             membershipType: credentials.membershipType,
             billingMode: settings.cursorBillingMode
         )
-        return try await provider.fetch()
+        var snapshot = try await provider.fetch()
+        let recent = await Self.fetchCursorRecentRequests(client: client)
+        if !recent.isEmpty { snapshot.recentRequests = recent }
+        return snapshot
+    }
+
+    /// gRPC 端点拉取最近 N 条请求（best-effort，失败不影响主流程）。
+    private static func fetchCursorRecentRequests(client: AuthorizedHTTPClient) async -> [RecentRequest] {
+        guard let url = URL(string: CursorDashboardAPI.getFilteredUsageEvents) else { return [] }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "page": 1,
+            "pageSize": CursorDashboardAPI.recentPageSize
+        ])
+        do {
+            let data = try await client.send(request)
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let events = json["usageEventsDisplay"] as? [[String: Any]] else { return [] }
+            return events.compactMap { Self.parseUsageEvent($0) }
+        } catch { return [] }
+    }
+
+    private static func parseUsageEvent(_ event: [String: Any]) -> RecentRequest? {
+        guard let model = event["model"] as? String,
+              let tsStr = event["timestamp"] as? String,
+              let tsMs = Double(tsStr) else { return nil }
+        let tok = event["tokenUsage"] as? [String: Any]
+        return RecentRequest(
+            id: "\(tsStr)-\(model)",
+            model: model,
+            timestamp: Date(timeIntervalSince1970: tsMs / 1000),
+            inputTokens: tok?["inputTokens"] as? Int ?? 0,
+            outputTokens: tok?["outputTokens"] as? Int ?? 0,
+            cacheReadTokens: tok?["cacheReadTokens"] as? Int ?? 0,
+            cacheWriteTokens: tok?["cacheWriteTokens"] as? Int ?? 0
+        )
+    }
+
+    // MARK: - Codex session 日志解析
+
+    /// 从最近的 Codex session JSONL 中提取 per-turn token 消耗（累积差值）。
+    private static func readCodexRecentTurns() -> [RecentRequest] {
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+        let sessionsDir = home.appendingPathComponent(".codex/sessions")
+        guard fm.fileExists(atPath: sessionsDir.path) else { return [] }
+
+        let model = readCodexModel(home: home)
+
+        // 按修改时间倒序找最近的 session 文件
+        guard let enumerator = fm.enumerator(
+            at: sessionsDir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        var candidates: [(URL, Date)] = []
+        while let url = enumerator.nextObject() as? URL {
+            guard url.pathExtension == "jsonl" else { continue }
+            if let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate {
+                candidates.append((url, date))
+            }
+        }
+        candidates.sort { $0.1 > $1.1 }
+
+        // 最多扫描最近 3 个 session 文件，凑齐 5 条
+        var results: [RecentRequest] = []
+        for (url, _) in candidates.prefix(3) {
+            let turns = parseTurnsFromSession(url: url, model: model)
+            results.append(contentsOf: turns)
+            if results.count >= 5 { break }
+        }
+
+        // 按时间倒序，取最近 5 条
+        results.sort { $0.timestamp > $1.timestamp }
+        return Array(results.prefix(5))
+    }
+
+    nonisolated private static func readCodexModel(home: URL) -> String {
+        let configPath = home.appendingPathComponent(".codex/config.toml").path
+        guard let content = try? String(contentsOfFile: configPath, encoding: .utf8) else { return "Codex" }
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("model") && trimmed.contains("=") {
+                let parts = trimmed.components(separatedBy: "=")
+                if parts.count >= 2 {
+                    return parts[1].trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "")
+                }
+            }
+        }
+        return "Codex"
+    }
+
+    nonisolated private static func parseTurnsFromSession(url: URL, model fallbackModel: String) -> [RecentRequest] {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        var currentModel = fallbackModel
+        var turns: [RecentRequest] = []
+
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty,
+                  let data = trimmed.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let payload = obj["payload"] as? [String: Any] else { continue }
+
+            let eventType = (obj["type"] as? String) ?? (payload["type"] as? String) ?? ""
+
+            if eventType == "turn_context" || eventType == "session_meta",
+               let m = payload["model"] as? String, !m.isEmpty {
+                currentModel = m
+            }
+
+            guard eventType == "token_count" || (payload["type"] as? String) == "token_count",
+                  let tsStr = obj["timestamp"] as? String,
+                  let ts = QuotaNormalizer.parseISODate(tsStr),
+                  let info = payload["info"] as? [String: Any],
+                  let lastUsage = info["last_token_usage"] as? [String: Any] else { continue }
+
+            let input = lastUsage["input_tokens"] as? Int ?? 0
+            let output = lastUsage["output_tokens"] as? Int ?? 0
+            let cached = lastUsage["cached_input_tokens"] as? Int ?? 0
+            guard input + output > 0 else { continue }
+
+            turns.append(RecentRequest(
+                id: "codex-\(ts.timeIntervalSince1970)",
+                model: currentModel,
+                timestamp: ts,
+                inputTokens: max(0, input - cached),
+                outputTokens: output,
+                cacheReadTokens: cached,
+                cacheWriteTokens: 0
+            ))
+        }
+        return turns
+    }
+
+    /// 读取最近 N 天所有 Codex session 的 per-turn token 消耗，用于导出 CSV。
+    nonisolated static func readCodexAllTurns(daysBack: Int = 30) -> [RecentRequest] {
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+        let sessionsDir = home.appendingPathComponent(".codex/sessions")
+        guard fm.fileExists(atPath: sessionsDir.path) else { return [] }
+
+        let model = readCodexModel(home: home)
+        let cutoff = Calendar.current.date(byAdding: .day, value: -daysBack, to: Date()) ?? Date()
+
+        guard let enumerator = fm.enumerator(
+            at: sessionsDir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        var results: [RecentRequest] = []
+        while let url = enumerator.nextObject() as? URL {
+            guard url.pathExtension == "jsonl" else { continue }
+            if let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
+               date < cutoff { continue }
+            results.append(contentsOf: parseTurnsFromSession(url: url, model: model))
+        }
+        results.sort { $0.timestamp > $1.timestamp }
+        return results.filter { $0.timestamp >= cutoff }
     }
 
     #if DEBUG

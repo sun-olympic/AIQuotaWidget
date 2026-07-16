@@ -265,10 +265,10 @@ final class CursorBillingModeTests: XCTestCase {
         service.setTestState(.loaded(usageBasedSnapshot), for: .cursor)
         
         settings.cursorBillingMode = .auto
-        XCTAssertEqual(contentView.collapsedTooltipText, "Cursor (Auto Mode)")
+        XCTAssertEqual(contentView.collapsedTooltipText, "Cursor (Auto Mode)\n$160.00 left")
         
         settings.cursorBillingMode = .api
-        XCTAssertEqual(contentView.collapsedTooltipText, "Cursor (API Mode)")
+        XCTAssertEqual(contentView.collapsedTooltipText, "Cursor (API Mode)\n$160.00 left")
         
         // 2. With legacy state loaded:
         let legacySnapshot = QuotaSnapshot(
@@ -278,7 +278,7 @@ final class CursorBillingModeTests: XCTestCase {
             ledStatus: .yellow
         )
         service.setTestState(.loaded(legacySnapshot), for: .cursor)
-        XCTAssertEqual(contentView.collapsedTooltipText, "Cursor")
+        XCTAssertEqual(contentView.collapsedTooltipText, "Cursor\n250 / 500 requests")
     }
 
     @MainActor
@@ -318,6 +318,6 @@ final class CursorBillingModeTests: XCTestCase {
             ledStatus: .green
         )
         service.setTestState(.loaded(snapshot), for: .antigravity)
-        XCTAssertEqual(contentView.collapsedTooltipText, "Antigravity (Gemini 3.5 Flash)")
+        XCTAssertEqual(contentView.collapsedTooltipText, "Antigravity (Gemini 3.5 Flash)\nGemini Flash · 70%")
     }
 }

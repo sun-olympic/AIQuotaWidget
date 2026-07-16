@@ -53,6 +53,19 @@ struct OnDemandUsage: Equatable {
     }
 }
 
+/// 单次请求的 token 消耗明细，供「最近请求」列表渲染。
+struct RecentRequest: Equatable, Identifiable {
+    let id: String
+    let model: String
+    let timestamp: Date
+    let inputTokens: Int
+    let outputTokens: Int
+    let cacheReadTokens: Int
+    let cacheWriteTokens: Int
+
+    var totalTokens: Int { inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens }
+}
+
 /// Antigravity 可选模型信息，供 UI 的切换菜单渲染。
 struct AntigravityModelInfo: Equatable, Identifiable {
     let id: String
@@ -81,6 +94,8 @@ struct QuotaSnapshot: Equatable {
     var antigravityModels: [AntigravityModelInfo]? = nil
     /// 当前激活的 Antigravity 模型 ID。
     var activeAntigravityModelId: String? = nil
+    /// 最近 N 次请求的 token 消耗明细（仅支持的来源有值）。
+    var recentRequests: [RecentRequest]? = nil
     /// LED 状态。
     var ledStatus: LEDStatus
 

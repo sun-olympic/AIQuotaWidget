@@ -82,6 +82,14 @@ enum Strings {
         "interval.minutes": [.english: "min", .chinese: "分钟"],
         "time.days": [.english: "d", .chinese: "天"],
         "time.hours": [.english: "h", .chinese: "小时"],
-        "time.minutes": [.english: "m", .chinese: "分"]
+        "time.minutes": [.english: "m", .chinese: "分"],
+        "recent.title": [.english: "Recent Requests (Tokens)", .chinese: "最近请求 (Token 消耗)"],
+        "recent.input": [.english: "Input", .chinese: "输入"],
+        "recent.output": [.english: "Output", .chinese: "输出"],
+        "recent.latest": [.english: "Latest", .chinese: "最近"],
+        "codex.export": [.english: "Export CSV", .chinese: "导出 CSV"],
+        "codex.export.help": [.english: "Export last 30 days Codex usage to CSV", .chinese: "导出最近 30 天 Codex 使用详情到 CSV"],
+        "codex.export.done": [.english: "Exported", .chinese: "已导出"],
+        "codex.export.fail": [.english: "Export failed", .chinese: "导出失败"]
     ]
 }

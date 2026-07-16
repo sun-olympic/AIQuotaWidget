@@ -24,27 +24,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         if settings.isCollapsed {
             initialSize = NSSize(width: 120, height: 120)
         } else {
-            let baseHeight: CGFloat = 220
-            var secondaryHeight: CGFloat = 0
-            if let service = service {
-                let state: WidgetState
-                switch settings.selectedTab {
-                case .cursor: state = service.cursorState
-                case .codex: state = service.codexState
-                case .antigravity: state = service.antigravityState
-                case .claudecode: state = service.claudecodeState
-                }
-                if case .loaded(let snapshot) = state,
-                   let windows = snapshot.secondaryWindows,
-                   !windows.isEmpty {
-                    let maxSecondaryHeight = settings.selectedTab == .antigravity ? 120.0 : 56.0
-                    let count = Double(windows.count)
-                    secondaryHeight = max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
-                }
-            } else {
-                secondaryHeight = (settings.selectedTab == .antigravity) ? 100 : 0
-            }
-            initialSize = NSSize(width: 320, height: baseHeight + secondaryHeight)
+            initialSize = NSSize(width: 320, height: Self.expandedHeight(settings: settings, service: service))
         }
         
         let rect = NSRect(origin: origin, size: initialSize)
@@ -86,29 +66,36 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         if settings.isCollapsed {
             targetSize = NSSize(width: 120, height: 120)
         } else {
-            let baseHeight: CGFloat = 220
-            var secondaryHeight: CGFloat = 0
-            if let service = service {
-                let state: WidgetState
-                switch settings.selectedTab {
-                case .cursor: state = service.cursorState
-                case .codex: state = service.codexState
-                case .antigravity: state = service.antigravityState
-                case .claudecode: state = service.claudecodeState
-                }
-                if case .loaded(let snapshot) = state,
-                   let windows = snapshot.secondaryWindows,
-                   !windows.isEmpty {
-                    let maxSecondaryHeight = settings.selectedTab == .antigravity ? 120.0 : 56.0
-                    let count = Double(windows.count)
-                    secondaryHeight = max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
-                }
-            } else {
-                secondaryHeight = (settings.selectedTab == .antigravity) ? 100 : 0
-            }
-            targetSize = NSSize(width: 320, height: baseHeight + secondaryHeight)
+            targetSize = NSSize(width: 320, height: Self.expandedHeight(settings: settings, service: service))
         }
         updateWindowFrame(targetSize: targetSize)
+    }
+
+    /// 统一展开态高度计算，与 ContentView.currentExpandedHeight 保持同步。
+    private static func expandedHeight(settings: AppSettings, service: QuotaService?) -> CGFloat {
+        var height: CGFloat = 220
+        guard let service = service else {
+            return height + (settings.selectedTab == .antigravity ? 100 : 0)
+        }
+        let state: WidgetState
+        switch settings.selectedTab {
+        case .cursor: state = service.cursorState
+        case .codex: state = service.codexState
+        case .antigravity: state = service.antigravityState
+        case .claudecode: state = service.claudecodeState
+        }
+        guard case .loaded(let snapshot) = state else { return height }
+        if let windows = snapshot.secondaryWindows, !windows.isEmpty {
+            let maxH = settings.selectedTab == .antigravity ? 120.0 : 56.0
+            height += max(0.0, min(Double(windows.count) * 25.0, maxH) - 25.0)
+        }
+        if let recent = snapshot.recentRequests, !recent.isEmpty {
+            height += 18 + CGFloat(recent.count) * 16
+        }
+        if settings.selectedTab == .codex {
+            height += 24
+        }
+        return height
     }
 
     private func updateWindowFrame(targetSize: NSSize) {

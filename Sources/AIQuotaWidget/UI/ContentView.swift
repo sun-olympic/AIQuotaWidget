@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// 悬浮窗主视图：液态玻璃背景 + 顶部栏 + Tab + 内容区。
 struct ContentView: View {
@@ -176,6 +177,72 @@ struct ContentView: View {
                     maxHeight: max(25.0, min(Double(windows.count) * 25.0, settings.selectedTab == .antigravity ? 120.0 : 56.0))
                 )
             }
+            if let recent = snapshot.recentRequests, !recent.isEmpty {
+                RecentRequestsView(requests: recent, settings: settings)
+            }
+            if settings.selectedTab == .codex {
+                codexExportButton
+            }
+        }
+    }
+
+    @State private var codexExportMessage: String?
+
+    private var codexExportButton: some View {
+        HStack(spacing: 4) {
+            Button(action: exportCodexCSV) {
+                HStack(spacing: 3) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 9))
+                    Text(settings.t("codex.export"))
+                        .font(.system(size: 9))
+                }
+                .foregroundStyle(.white.opacity(0.7))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
+            }
+            .buttonStyle(.plain)
+            .help(settings.t("codex.export.help"))
+
+            if let msg = codexExportMessage {
+                Text(msg)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+    }
+
+    private func exportCodexCSV() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        let dateFmt = DateFormatter()
+        dateFmt.dateFormat = "yyyyMMdd"
+        panel.nameFieldStringValue = "codex-usage-\(dateFmt.string(from: Date())).csv"
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let rows = QuotaService.readCodexAllTurns(daysBack: 30)
+            var csv = "\u{FEFF}日期时间,模型,输入Tokens,输出Tokens,缓存读取Tokens,缓存写入Tokens,总Tokens\n"
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            for r in rows {
+                csv += "\(df.string(from: r.timestamp)),\(r.model),\(r.inputTokens),\(r.outputTokens),\(r.cacheReadTokens),\(r.cacheWriteTokens),\(r.totalTokens)\n"
+            }
+            do {
+                try csv.write(to: url, atomically: true, encoding: .utf8)
+                DispatchQueue.main.async {
+                    codexExportMessage = "\(settings.t("codex.export.done")) (\(rows.count))"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { codexExportMessage = nil }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    codexExportMessage = settings.t("codex.export.fail")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { codexExportMessage = nil }
+                }
+            }
         }
     }
 
@@ -244,27 +311,58 @@ struct ContentView: View {
 
     var collapsedTooltipText: String {
         let toolName = settings.t("tab.\(settings.selectedTab.rawValue)")
+        var lines: [String] = []
+
         switch settings.selectedTab {
         case .cursor:
             if case let .loaded(snapshot) = service.state(for: .cursor), snapshot.mode == .usageBased {
                 let modeStr = settings.cursorBillingMode == .api ? settings.t("cursor.billingMode.api") : settings.t("cursor.billingMode.auto")
-                return "\(toolName) (\(modeStr))"
+                lines.append("\(toolName) (\(modeStr))")
+            } else {
+                lines.append(toolName)
             }
-            return toolName
-        case .codex:
-            return toolName
         case .antigravity:
             if case let .loaded(snapshot) = service.state(for: .antigravity),
                let modelId = snapshot.activeAntigravityModelId ?? settings.antigravityDefaultModelId {
                 let modelName = snapshot.antigravityModels?.first(where: { $0.id == modelId })?.name ?? modelId
-                return "\(toolName) (\(modelName))"
+                lines.append("\(toolName) (\(modelName))")
             } else if let modelId = settings.antigravityDefaultModelId {
-                return "\(toolName) (\(modelId))"
+                lines.append("\(toolName) (\(modelId))")
+            } else {
+                lines.append(toolName)
             }
-            return toolName
-        case .claudecode:
-            return toolName
+        default:
+            lines.append(toolName)
         }
+
+        if case let .loaded(snapshot) = service.state(for: settings.selectedTab) {
+            lines.append(snapshot.primaryText)
+            if let resetAt = snapshot.resetAt {
+                lines.append("\(settings.t("reset.in")) \(Countdown.format(until: resetAt, settings: settings))")
+            }
+            if let plan = snapshot.planName {
+                lines.append("\(settings.t("plan.label")): \(plan)")
+            }
+            if let recent = snapshot.recentRequests, !recent.isEmpty {
+                lines.append("")
+                lines.append(settings.t("recent.title"))
+                let fmtNum = RecentRequestsView.fmtNum
+                for req in recent {
+                    let tokens = RecentRequestsView.formatTokens(req.totalTokens, lang: settings.language)
+                    let time = RecentRequestsView.formatTime(req.timestamp)
+                    var detail = "\(req.model)  \(tokens)  \(time)"
+                    var parts: [String] = []
+                    if req.cacheReadTokens > 0 { parts.append("CR:\(fmtNum(req.cacheReadTokens))") }
+                    if req.cacheWriteTokens > 0 { parts.append("CW:\(fmtNum(req.cacheWriteTokens))") }
+                    parts.append("\(settings.t("recent.input")):\(fmtNum(req.inputTokens))")
+                    parts.append("\(settings.t("recent.output")):\(fmtNum(req.outputTokens))")
+                    detail += "\n  " + parts.joined(separator: " / ")
+                    lines.append(detail)
+                }
+            }
+        }
+
+        return lines.joined(separator: "\n")
     }
 
     private var collapsedView: some View {
@@ -360,16 +458,23 @@ struct ContentView: View {
     }
 
     private var currentExpandedHeight: CGFloat {
-        let baseHeight: CGFloat = 220
-        if case .loaded(let snapshot) = service.state(for: settings.selectedTab),
-           let windows = snapshot.secondaryWindows,
-           !windows.isEmpty {
+        var height: CGFloat = 220
+        guard case .loaded(let snapshot) = service.state(for: settings.selectedTab) else {
+            return height
+        }
+        if let windows = snapshot.secondaryWindows, !windows.isEmpty {
             let maxSecondaryHeight = settings.selectedTab == .antigravity ? 120.0 : 56.0
             let count = Double(windows.count)
-            let secondaryHeight = max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
-            return baseHeight + secondaryHeight
+            height += max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
         }
-        return baseHeight
+        if let recent = snapshot.recentRequests, !recent.isEmpty {
+            // ponytail: 标题 14 + 每行 16，留 4 间距
+            height += 18 + CGFloat(recent.count) * 16
+        }
+        if settings.selectedTab == .codex {
+            height += 24
+        }
+        return height
     }
 
     private var currentCornerRadius: CGFloat {
