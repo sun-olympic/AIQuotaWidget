@@ -209,7 +209,7 @@ enum ProductTab: String, CaseIterable, Identifiable {
         case .cursor:
             return URL(string: "https://cursor.com/settings")
         case .codex:
-            return URL(string: "https://github.com/settings/copilot")
+            return URL(string: "https://chatgpt.com/codex/settings/usage")
         case .antigravity:
             return URL(string: "https://aistudio.google.com/")
         case .claudecode:

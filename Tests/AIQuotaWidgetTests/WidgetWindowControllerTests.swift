@@ -91,6 +91,11 @@ final class WidgetWindowControllerTests: XCTestCase {
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }
 
+    func testCodexDashboardURLPointsToChatGPTUsage() throws {
+        let url = try XCTUnwrap(ProductTab.codex.dashboardURL)
+        XCTAssertEqual(url.absoluteString, "https://chatgpt.com/codex/settings/usage")
+    }
+
     func testAntigravityDefaultModelIdPersistence() throws {
         let suiteName = "test.AIQuotaWidget.AppSettings.ModelId"
         UserDefaults.standard.removePersistentDomain(forName: suiteName)
