@@ -468,8 +468,8 @@ struct ContentView: View {
             height += max(0.0, min(count * 25.0, maxSecondaryHeight) - 25.0)
         }
         if let recent = snapshot.recentRequests, !recent.isEmpty {
-            // ponytail: 标题 14 + 每行 16，留 4 间距
-            height += 18 + CGFloat(recent.count) * 16
+            // 最近请求固定为 5 行视口，更多记录通过滚动查看。
+            height += 18 + RecentRequestsView.viewportHeight
         }
         if settings.selectedTab == .codex {
             height += 24

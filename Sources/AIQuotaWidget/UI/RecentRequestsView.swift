@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// 最近 N 次请求的 token 消耗列表；鼠标悬停于消耗量上显示详细分类。
+/// 最近一个有数据日期的 token 消耗列表；默认显示 5 行，可滚动查看更早记录。
 struct RecentRequestsView: View {
     let requests: [RecentRequest]
     @ObservedObject var settings: AppSettings
+
+    static let defaultVisibleRows = 5
+    private static let rowHeight: CGFloat = 16
+    static let viewportHeight: CGFloat = rowHeight * CGFloat(defaultVisibleRows) + 3 * CGFloat(defaultVisibleRows - 1)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -12,9 +16,15 @@ struct RecentRequestsView: View {
                 .foregroundStyle(.white.opacity(0.6))
                 .padding(.bottom, 1)
 
-            ForEach(requests) { req in
-                requestRow(req)
+            ScrollView(.vertical) {
+                LazyVStack(alignment: .leading, spacing: 3) {
+                    ForEach(requests) { req in
+                        requestRow(req)
+                    }
+                }
             }
+            .frame(height: Self.viewportHeight)
+            .scrollIndicators(.visible)
         }
     }
 

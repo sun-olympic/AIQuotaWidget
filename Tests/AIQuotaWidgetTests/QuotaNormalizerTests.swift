@@ -3,6 +3,22 @@ import XCTest
 
 final class QuotaNormalizerTests: XCTestCase {
 
+    func testRecentRequestsPageSizeKeepsHistoryAvailable() {
+        XCTAssertGreaterThan(CursorDashboardAPI.recentPageSize, 5)
+    }
+
+    func testRecentRequestsKeepOnlyLatestDayWithData() {
+        let calendar = Calendar(identifier: .gregorian)
+        let day1 = calendar.date(from: DateComponents(year: 2026, month: 9, day: 26))!
+        let day2 = calendar.date(from: DateComponents(year: 2026, month: 9, day: 27))!
+        let requests = [
+            RecentRequest(id: "old", model: "m", timestamp: day1, inputTokens: 1, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0),
+            RecentRequest(id: "new", model: "m", timestamp: day2, inputTokens: 1, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0)
+        ]
+
+        XCTAssertEqual(QuotaService.requestsFromLatestDay(requests).map(\.id), ["new"])
+    }
+
     // MARK: - LED 阈值
 
     func testLEDThresholds() {

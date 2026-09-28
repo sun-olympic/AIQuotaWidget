@@ -15,6 +15,14 @@ enum WidgetState: Equatable {
 @MainActor
 final class QuotaService: ObservableObject {
 
+    /// 只保留最近一个有请求记录的自然日，避免当前日期无数据时列表为空。
+    nonisolated static func requestsFromLatestDay(_ requests: [RecentRequest]) -> [RecentRequest] {
+        guard let latest = requests.map(\.timestamp).max() else { return [] }
+        let calendar = Calendar.current
+        return requests.filter { calendar.isDate($0.timestamp, inSameDayAs: latest) }
+            .sorted { $0.timestamp > $1.timestamp }
+    }
+
     @Published private(set) var cursorState: WidgetState = .loading
     @Published private(set) var codexState: WidgetState = .loading
     @Published private(set) var antigravityState: WidgetState = .loading
@@ -257,7 +265,7 @@ final class QuotaService: ObservableObject {
             let data = try await client.send(request)
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let events = json["usageEventsDisplay"] as? [[String: Any]] else { return [] }
-            return events.compactMap { Self.parseUsageEvent($0) }
+            return Self.requestsFromLatestDay(events.compactMap { Self.parseUsageEvent($0) })
         } catch { return [] }
     }
 
@@ -288,7 +296,7 @@ final class QuotaService: ObservableObject {
 
         let model = readCodexModel(home: home)
 
-        // 按修改时间倒序找最近的 session 文件
+        // 按修改时间倒序找当天的 session 文件
         guard let enumerator = fm.enumerator(
             at: sessionsDir,
             includingPropertiesForKeys: [.contentModificationDateKey],
@@ -304,17 +312,14 @@ final class QuotaService: ObservableObject {
         }
         candidates.sort { $0.1 > $1.1 }
 
-        // 最多扫描最近 3 个 session 文件，凑齐 5 条
         var results: [RecentRequest] = []
-        for (url, _) in candidates.prefix(3) {
+        for (url, _) in candidates {
             let turns = parseTurnsFromSession(url: url, model: model)
             results.append(contentsOf: turns)
-            if results.count >= 5 { break }
         }
 
-        // 按时间倒序，取最近 5 条
-        results.sort { $0.timestamp > $1.timestamp }
-        return Array(results.prefix(5))
+        // 按最近一个有数据的日期返回全部记录；界面默认显示 5 行并支持滚动。
+        return requestsFromLatestDay(results)
     }
 
     nonisolated private static func readCodexModel(home: URL) -> String {
