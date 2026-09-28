@@ -58,7 +58,7 @@ final class QuotaService: ObservableObject {
         settings.$selectedTab
             .dropFirst()
             .sink { [weak self] tab in
-                self?.refresh(tab)
+                self?.refresh(tab, replacingInFlight: false)
                 self?.rescheduleTimer()
             }
             .store(in: &cancellables)
@@ -88,6 +88,7 @@ final class QuotaService: ObservableObject {
     /// 用户主动点击 Tab：永久禁用自动默认选择，并切换。
     func userSelect(_ tab: ProductTab) {
         autoSelectArmed = false
+        guard settings.selectedTab != tab else { return }
         settings.selectedTab = tab
     }
 
@@ -129,13 +130,15 @@ final class QuotaService: ObservableObject {
         let interval = settings.refreshInterval
         let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self else { return }
-            Task { @MainActor in self.refresh(self.settings.selectedTab) }
+            Task { @MainActor in self.refresh(self.settings.selectedTab, replacingInFlight: false) }
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
 
-    private func refresh(_ tab: ProductTab) {
+    private func refresh(_ tab: ProductTab, replacingInFlight: Bool = true) {
+        // 切换页签和定时器复用已有请求，显式刷新/配置变更才替换旧请求。
+        if !replacingInFlight, tasks[tab] != nil { return }
         let refreshID = UUID()
         refreshIDs[tab] = refreshID
         tasks[tab]?.cancel()
@@ -199,7 +202,8 @@ final class QuotaService: ObservableObject {
                     snapshot = try await fetchCursor()
                 case .codex:
                     snapshot = try await CodexProvider(settings: settings).fetch()
-                    let codexRecent = Self.readCodexRecentTurns()
+                    try Task.checkCancellation()
+                    let codexRecent = await Self.readCodexRecentTurns()
                     if !codexRecent.isEmpty { snapshot.recentRequests = codexRecent }
                 case .antigravity:
                     snapshot = try await AntigravityProvider(
@@ -288,10 +292,12 @@ final class QuotaService: ObservableObject {
     // MARK: - Codex session 日志解析
 
     /// 从最近的 Codex session JSONL 中提取 per-turn token 消耗（累积差值）。
-    private static func readCodexRecentTurns() -> [RecentRequest] {
+    nonisolated static func readCodexRecentTurns(sessionsDirectory: URL? = nil) async -> [RecentRequest] {
+        // 非 MainActor 的异步函数在后台执行文件 IO 和 JSON 解析。
+        guard !Task.isCancelled else { return [] }
         let fm = FileManager.default
         let home = fm.homeDirectoryForCurrentUser
-        let sessionsDir = home.appendingPathComponent(".codex/sessions")
+        let sessionsDir = sessionsDirectory ?? home.appendingPathComponent(".codex/sessions")
         guard fm.fileExists(atPath: sessionsDir.path) else { return [] }
 
         let model = readCodexModel(home: home)
@@ -305,6 +311,7 @@ final class QuotaService: ObservableObject {
 
         var candidates: [(URL, Date)] = []
         while let url = enumerator.nextObject() as? URL {
+            guard !Task.isCancelled else { return [] }
             guard url.pathExtension == "jsonl" else { continue }
             if let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate {
                 candidates.append((url, date))
@@ -314,6 +321,7 @@ final class QuotaService: ObservableObject {
 
         var results: [RecentRequest] = []
         for (url, _) in candidates {
+            guard !Task.isCancelled else { return [] }
             let turns = parseTurnsFromSession(url: url, model: model)
             results.append(contentsOf: turns)
         }
@@ -343,6 +351,7 @@ final class QuotaService: ObservableObject {
         var turns: [RecentRequest] = []
 
         for line in content.components(separatedBy: .newlines) {
+            guard !Task.isCancelled else { return [] }
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty,
                   let data = trimmed.data(using: .utf8),

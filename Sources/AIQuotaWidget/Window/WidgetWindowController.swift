@@ -33,6 +33,8 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         super.init()
 
         let hosting = NSHostingView(rootView: rootView)
+        // 尺寸由控制器统一管理，避免 SwiftUI 的固有尺寸再次调整窗口。
+        hosting.sizingOptions = []
         hosting.autoresizingMask = [.width, .height]
         hosting.frame = NSRect(origin: .zero, size: initialSize)
         panel.contentView = hosting
@@ -51,6 +53,8 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         }
         
         Publishers.MergeMany(publishers)
+            // @Published 在 willSet 发出通知，下一轮主队列再读取已更新的状态。
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.recalculateWindowSize()
             }
@@ -90,7 +94,7 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
             height += max(0.0, min(Double(windows.count) * 25.0, maxH) - 25.0)
         }
         if let recent = snapshot.recentRequests, !recent.isEmpty {
-            height += 18 + CGFloat(recent.count) * 16
+            height += 18 + RecentRequestsView.viewportHeight
         }
         if settings.selectedTab == .codex {
             height += 24

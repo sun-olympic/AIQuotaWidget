@@ -104,10 +104,13 @@ enum CodexAppServer {
         if let customPath = settings?.customCodexPath, !customPath.isEmpty {
             var resolvedPath = customPath
             if customPath.hasSuffix(".app") {
-                let appServerBinary = (customPath as NSString).appendingPathComponent("Contents/Resources/codex")
-                if fm.isExecutableFile(atPath: appServerBinary) {
-                    resolvedPath = appServerBinary
+                for relativePath in CodexConfig.appExecutableRelativePaths {
+                    let appServerBinary = (customPath as NSString).appendingPathComponent(relativePath)
+                    if fm.isExecutableFile(atPath: appServerBinary) {
+                        return appServerBinary
+                    }
                 }
+                resolvedPath = ""
             }
             if fm.isExecutableFile(atPath: resolvedPath) {
                 return resolvedPath

@@ -56,11 +56,18 @@ enum CodexConfig {
     /// `~/.codex/auth.json`（app-server 自行用它认证）。
     static let authJSONRelative = ".codex/auth.json"
 
+    /// 兼容独立 Codex 和新版 ChatGPT 内嵌的 CLI 应用包。
+    static let appExecutableRelativePaths = [
+        "Contents/Resources/codex",
+        "Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+    ]
+
     /// 常见可执行目录（PATH 之外的兜底搜索）。
     static let extraSearchDirs = [
         "/opt/homebrew/bin",
         "/usr/local/bin",
         "/usr/bin",
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS",
         "/Applications/ChatGPT.app/Contents/Resources",
         "/Applications/Codex.app/Contents/Resources"
     ]

@@ -5,6 +5,79 @@ import Combine
 
 final class WidgetWindowControllerTests: XCTestCase {
 
+    @MainActor
+    func testRecentHistoryUsesFixedViewportHeight() throws {
+        let suite = "WindowHeight.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.selectedTab = .codex
+        let service = QuotaService(settings: settings)
+        for count in [5, 50, 1000] {
+            var snapshot = QuotaSnapshot(remainingPercent: 80, primaryText: "80%", mode: .unknown, ledStatus: .green)
+            snapshot.recentRequests = (0..<count).map {
+                RecentRequest(id: String($0), model: "test", timestamp: Date(), inputTokens: 1,
+                              outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0)
+            }
+            service.setTestState(.loaded(snapshot), for: .codex)
+            let controller = WidgetWindowController(settings: settings, service: service, rootView: Text("Test"))
+            XCTAssertEqual(controller.panel.frame.height, 220 + 18 + RecentRequestsView.viewportHeight + 24)
+        }
+    }
+
+    @MainActor
+    func testRepeatedTabSwitchesReuseInFlightRefreshes() async throws {
+        let suite = "TabRefresh.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.enabledTabs = [.cursor, .codex]
+        settings.selectedTab = .cursor
+        var calls: [ProductTab: Int] = [:]
+        let service = QuotaService(settings: settings) { tab in
+            calls[tab, default: 0] += 1
+            try await Task.sleep(nanoseconds: 300_000_000)
+            return QuotaSnapshot(remainingPercent: 80, primaryText: "ready", mode: .unknown, ledStatus: .green)
+        }
+        defer { service.stop() }
+        service.start()
+        for _ in 0..<6 {
+            service.userSelect(.codex)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            service.userSelect(.cursor)
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        try await Task.sleep(nanoseconds: 400_000_000)
+        XCTAssertEqual(calls[.cursor], 1)
+        XCTAssertEqual(calls[.codex], 1)
+        guard case .loaded = service.cursorState, case .loaded = service.codexState else {
+            return XCTFail("Both refreshes should finish despite repeated switching")
+        }
+    }
+
+    @MainActor
+    func testCodexHistoryDoesNotBlockMainActorAndSupportsCancellation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let line = #"{"type":"event_msg","timestamp":"2026-09-28T08:00:00Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":100,"output_tokens":10}}}}"# + "\n"
+        try String(repeating: line, count: 20000).write(to: root.appendingPathComponent("fixture.jsonl"), atomically: true, encoding: .utf8)
+        var finished = false
+        let scan = Task { @MainActor in
+            let result = await QuotaService.readCodexRecentTurns(sessionsDirectory: root)
+            finished = true
+            return result
+        }
+        try await Task.sleep(nanoseconds: 20_000_000)
+        XCTAssertFalse(finished, "Main actor must resume while the large log is still being parsed")
+        scan.cancel()
+        let cancelled = await scan.value
+        XCTAssertTrue(cancelled.isEmpty)
+        let parsed = await QuotaService.readCodexRecentTurns(sessionsDirectory: root)
+        XCTAssertEqual(parsed.count, 20000)
+        XCTAssertEqual(parsed.first?.totalTokens, 110)
+    }
+
     struct TestView: View {
         @ObservedObject var settings: AppSettings
         var body: some View {
